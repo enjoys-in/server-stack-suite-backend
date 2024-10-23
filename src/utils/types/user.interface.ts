@@ -1,15 +1,12 @@
+import { JwtPayload } from "jsonwebtoken";
  
 interface User {
-  id: string
-  username: string
-  name: string
-  status: boolean
-  isfirstlogin: boolean
-  role: string
-  token: string
-  [key: string]: any;
+    uid?: string;
+    email?: string;
+    role?: string;
+    status?: string;
 }
-export type IUser = User
+export type IUser = User & JwtPayload
 
 export enum USER_STATUS {
     ACTIVE = 'ACTIVE',
@@ -87,3 +84,23 @@ export enum PROCESSORS_QUEUE_NAME {
 }
 export const UserRolesArray = Object.values(AppRoles);
 export type AllowedRoles = keyof typeof AppRoles;
+
+ 
+
+export interface InterceptorsSettings {
+    response: Record<string, any>;
+    isEnable?: boolean;
+}
+
+export type AuthProviders = {
+    [key in AuthProvidersList]: AuthProvidersKeys;
+};
+export type AuthProvidersScopes = {
+    [key in AuthProvidersList]: string[];
+};
+export interface AuthProvidersKeys {
+    clientID: string;
+    clientSecret: string;
+    callbackURL: string;
+}
+export type AuthProvidersList = "google" | "facebook" | "github";

@@ -1,7 +1,7 @@
 import jwt from "jsonwebtoken";
 import type { Response, Request, NextFunction } from 'express'
-import { IUser } from "@/utils/types";
 import { CONFIG } from "@/app/config";
+import { IUser } from "@/utils/types/user.interface";
 
 export class JwtAuth {
     /**
@@ -30,10 +30,8 @@ export class JwtAuth {
             if (decodedToken.role !== "User") {
                 return res.json({ message: "Access Denied", result: null, success: false })
             }
-            // req.session["user"] = decodedToken
-            req.user = decodedToken
-            // fetch client secerert from db or redis connection, for eg we use uid as secret
-            req.clientSecret = decodedToken.uid || CONFIG.SECRETS.APP_SECRET
+            req.user = decodedToken 
+            
             next()
         } catch (error: any) {
             return res.json({ message: "Invalid Token", result: error.message, success: false })

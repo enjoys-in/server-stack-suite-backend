@@ -49,13 +49,14 @@ class AppServer {
     private ApplyConfiguration(): void {
         Logging.dev("Applying Express Server Configurations")
         Modifiers.useRoot(AppServer.App)
+        AppServer.App.use(AppMiddlewares.setHeaders)
         AppServer.App.use(helmet());
         AppServer.App.use(morgan("dev"));
-        AppServer.App.use(Cors.useCors());
+        // AppServer.App.use(Cors.useCors());
         AppServer.App.use(bodyParser.json());
         AppServer.App.use(useHttpsRedirection);
         AppServer.App.use(SessionHandler.forRoot());
-        AppServer.App.use(cookieParser(CONFIG.SECRETS.COOKIE_SECRET));
+        AppServer.App.use(cookieParser(CONFIG.SECRETS.SESSION_SECRET));
         AppServer.App.use(bodyParser.urlencoded({ extended: false }));
     }
     /**

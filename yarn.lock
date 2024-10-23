@@ -909,7 +909,14 @@
     "@types/node" "*"
     "@types/send" "*"
 
-"@types/ssh2@*":
+"@types/ssh2-sftp-client@^9.0.4":
+  version "9.0.4"
+  resolved "https://registry.yarnpkg.com/@types/ssh2-sftp-client/-/ssh2-sftp-client-9.0.4.tgz#203c2281b84635797d85fa78f684e00169d5f758"
+  integrity sha512-gnIn56MTB9W3A3hPL/1sHI23t8YwcE3eVYa1O2XjT9vaqimFdtNHxyQiy5Y78+ociQTKazMSD8YyMEO4QjNMrg==
+  dependencies:
+    "@types/ssh2" "^1.0.0"
+
+"@types/ssh2@*", "@types/ssh2@^1.0.0":
   version "1.15.1"
   resolved "https://registry.yarnpkg.com/@types/ssh2/-/ssh2-1.15.1.tgz#4db4b6864abca09eb299fe5354fa591add412223"
   integrity sha512-ZIbEqKAsi5gj35y4P4vkJYly642wIbY6PqoN0xiyQGshKUGXR9WQjF/iF9mXBQ8uBKy3ezfsCkcoHKhd0BzuDA==

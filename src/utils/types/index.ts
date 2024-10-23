@@ -1,5 +1,3 @@
-import { EVENT_CONSTANTS } from '../helpers/events.constants';
-
 export * from './createHost.interface';
 export * from './createNewSSL.interface';
 

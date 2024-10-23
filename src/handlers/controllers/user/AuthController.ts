@@ -1,15 +1,41 @@
 import { CONFIG } from "@/app/config";
 import { UserEntity } from "@/factory/entities/users.entity";
 import { InjectRepository } from "@/factory/typeorm";
+import { Logging } from "@/logs";
 import utils from "@/utils";
+import { onEnableHook } from "@/utils/decorators";
 import { AsyncHandler } from "@/utils/libs/AsyncHandler";
+import { OnAppStart } from "@/utils/types/application.interface";
+import { USER_STATUS } from "@/utils/types/user.interface";
 import type { Request, Response } from "express";
+
 import moment from "moment";
 
 
-class AuthController {
+@onEnableHook()
+class AuthController implements OnAppStart {
 
-
+      async onAppStart() {
+        const isUser = await InjectRepository(UserEntity).findOne({
+            where: {
+              username: 'admin',
+            }
+          })
+          if (isUser) return
+          const password = "Admin@123"
+          const user = await InjectRepository(UserEntity).save({
+            username: 'admin',
+            password: await utils.HashPassword(password),
+            email: 'admin@admin.com',
+            name: 'Admin',
+            status: USER_STATUS.ACTIVE,
+            isfirstlogin: true,
+    
+          })
+          Logging.dev("SuperUser has been created","notice")
+          console.log(`Username : ${user.username}`)
+          console.log(`password : ${password}`)
+    }
     async Login(req: Request, res: Response) {
         try {
             const { email, password } = req.body
@@ -30,7 +56,6 @@ class AuthController {
             }, "web")
             const cookieExpiration = moment(new Date()).add(CONFIG.SECRETS.JWT_SECRET_EXPIRATION, "days").toDate()
             res.cookie('access_token', token, { httpOnly: true, expires: cookieExpiration });
-            req.session["id"] = isUser.id.toString()
             res.json({
                 message: "OK", result: {
                     access_token: token,
