@@ -53,7 +53,7 @@ export enum HOST_TYPE {
     REDIRECTION = 'REDIRECTION',
     STREAM = 'STREAM',
     PROXY = 'PROXY',
-    ERROR_PAGE = 'ERROR-PAGE',
+    ERROR_PAGE = 'ERROR_PAGE',
 
 }
 export enum SSL_STATUS {

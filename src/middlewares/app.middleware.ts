@@ -5,14 +5,14 @@ import { Request, Response, NextFunction } from "express";
 
 const sigHeaderName = "X-Signature";
 export class AppMiddlewares {
-  static setHeaders(req: Request, res: Response, next: NextFunction) { 
-     
+  static setHeaders(req: Request, res: Response, next: NextFunction) {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-cache');
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Origin', "*");
+    // res.header('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Origin', req.headers.origin!);
     res.setHeader('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,x-app-version,x-app-name,x-api-key,Access-Control-Allow-Origin,Cache-Control');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS,PATCH');
+
     next();
   }
 

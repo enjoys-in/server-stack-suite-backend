@@ -1,8 +1,8 @@
 import { Router } from "express";
-import HostRoutes from "./hosts";
 import AppIntegrationRoutes from "./intergration";
-import { UserAuthController ,BaseController,FirewallPortsController,SslCertificatesController} from "@/handlers/controllers";
-import { ReqValidator } from "@/utils/validators/Request.validator";
+import { UserAuthController ,HostController ,BaseController,FirewallPortsController,SslCertificatesController} from "@/handlers/controllers";
+import { ReqValidator,HostValidator,ErrroPageValidator } from "@/utils/validators/Request.validator";
+import { Validator } from "@/middlewares/validator.middleware";
 
 const router = Router();
 // Auth
@@ -18,9 +18,9 @@ router.get("/first-setup", BaseController.default.setUpServerStackSuite)
 router.get("/sftp/upload", BaseController.default.sftpUpload)
 router.get("/files", BaseController.default.getFiles)
 router.get("/file-content", BaseController.default.getFileContent)
- 
-// Host Routes
-router.use("/:server_name/hosts",HostRoutes)
+
+
+
 
 // Firewall and Ports Routes
 router.get("/firewalls-ports/running-ports", FirewallPortsController.default.findAll)
@@ -35,7 +35,17 @@ router.route("/:server_name/ssl-certificates")
 router.get("/:server_name/ssl-certificates/:id",SslCertificatesController.default.findOne)
 
 // Third Party Apps Integration
-
 router.use("app",AppIntegrationRoutes)
+// Host Routes
+router.get("/:server_name/hosts",Validator.forFeature(HostValidator.getAll),HostController.default.getAllHosts)
+router.get("/:server_name/hosts/d/:domain_name",Validator.forFeature(HostValidator.getSingle), HostController.default.getSingleHost)
+router.put("/:server_name/hosts/proxy/:domain_name?", HostController.default.updateHost)
+router.delete("/:server_name/hosts/proxy/:domain_name?", HostController.default.deleteHost)
+router.post("/:server_name/hosts/proxy", HostController.default.addNewHosts)
+router.post("/:server_name/hosts/error-page", HostController.default.AddNewErrorPage)
+router.get("/:server_name/hosts/error-page", HostController.default.getAllErrorPage)
+router.get("/:server_name/hosts/error-page/:id", HostController.default.getOneErrorPage)
+router.delete("/:server_name/hosts/error-page/:id", HostController.default.deleteErrorPage)
+router.put("/:server_name/hosts/error-page/:id", HostController.default.updateErrorPage) 
 
 export default router

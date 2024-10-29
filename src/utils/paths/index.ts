@@ -34,16 +34,24 @@ export const SERVER_TYPE_FILE_PATH = {
     HTTPD: {
         DEFAULT: "/etc/httpd",
         DEAFULT_CONFIGURATION_FILE: "/etc/httpd/httpd.conf",
+        INDEX_HTML: "/var/www/html/index.nginx-debian.html",
+        ERROR_PAGES: "/usr/share/nginx/html/custom_{file_name}.html",
+        SITES_AVAILABLE_LOCATION_FILE: "/etc/nginx/sites-available/:file_name",
+        SITES_ENABLED_LOCATION_FILE: "/etc/nginx/sites-enabled:file_name",
     },
     APACHE: {
         DEFAULT: "/etc/apache2",
         DEAFULT_CONFIGURATION_FILE: "/etc/apache2/apache2.conf",
+        INDEX_HTML: "/var/www/html/index.nginx-debian.html",
+        ERROR_PAGES: "/usr/share/nginx/html/custom_{file_name}.html",
+        SITES_AVAILABLE_LOCATION_FILE: "/etc/nginx/sites-available/:file_name",
+        SITES_ENABLED_LOCATION_FILE: "/etc/nginx/sites-enabled:file_name",
 
     },
-    CADDY: {
-        DEFAULT: "/etc/caddy",
-        DEAFULT_CONFIGURATION_FILE: "/etc/caddy/Caddyfile",
-    }
+    // CADDY: {
+    //     DEFAULT: "/etc/caddy",
+    //     DEAFULT_CONFIGURATION_FILE: "/etc/caddy/Caddyfile",
+    // }
 }
 
 export const PATHS = {
@@ -116,7 +124,8 @@ export const COMMANDS = {
             DELETE: "sudo ufw delete {port}",
             LOGS: "sudo ufw status verbose",
             RUNNING_PORTS: "sudo lsof -i -P -n | grep LISTEN",
-            GET_PROCESS_ID: "sudo lsof -t -i:{port}",
+            GET_PROCESS_ID: "sudo lsof -t -i:{port} | xargs kill -9",           
+            KILL_FROM_PROCCESS_ID: "sudo lsof -t -i:{port} | xargs kill -9",           
             KILL_PORT: "sudo kill -9 {pid}",
         },
         UPDATE_PACKAGES: ["apt update", "apt upgrade -y"],

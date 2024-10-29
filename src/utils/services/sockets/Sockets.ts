@@ -4,6 +4,8 @@ import type { Server as HttpServer } from 'http'
 import { SOCKET_EVENTS } from "./socketEventConstants";
 import { SocketListeners } from "./socket-listeners";
 import * as  chokidar from "chokidar"
+import * as pty from "node-pty"
+
 
 let io: Server;
 const watcher = chokidar.watch(process.cwd(), {
@@ -19,9 +21,27 @@ export const InitSocketConnection = (server: HttpServer) => {
   })
   const listeners = new SocketListeners()
   io.on('connection', (socket: Socket) => {
+    const ptyProcess = pty.spawn('bash', [], {
+      name: 'xterm-256color',
+      cols: 100,
+      rows: 40,
+      cwd: process.env.HOME,
+      env: process.env
+      
+    });
+
+    ptyProcess.onData((data)=>socket.emit(SOCKET_EVENTS.RECIEVE_COMMAND, data));
+
+    socket.emit(SOCKET_EVENTS.SEND_COMMAND, (data:string)=>{
+      ptyProcess.write(data)
+    })
+
     SocketListeners.handleConnection(socket)
     listeners.sendPerformanceData(socket)
-    socket.on("disconnect", () => SocketListeners.handleDisconnection(socket));
+    socket.on("disconnect", () => {
+    ptyProcess.kill()
+      SocketListeners.handleDisconnection(socket)
+    });
     socket.on("disconnecting", async (reason) => {
       console.log(`socket ${socket.id} disconnected due to ${reason}`);
     });

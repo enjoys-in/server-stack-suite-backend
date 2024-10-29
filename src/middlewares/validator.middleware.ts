@@ -13,18 +13,25 @@ export class Validator {
  */
     static forFeature(validations: any[]) {
         return async (req: Request, res: Response, next: NextFunction) => {
+          try {
             for (let validation of validations) {
                 const result = await validation.run(req);
-                if (result.errors.length) break;
+                if (result.errors.length)  break; 
             }
             // Execute all validations
             // await Promise.all(validations.map(validation => validation.run(req)));
-            const errors = validationResult(req);
+            const errors = validationResult(req);          
             const err = errors.formatWith(x => x.msg).array()
             if (errors.isEmpty()) {
-                return next();
+                 next();
+                 return
             }
-            return res.status(422).json({ message: "Validation Error", result: err, success: false })
+             res.status(422).json({ message: "Validation Error", result: err, success: false })
+             return
+          } catch (error) {
+            res.status(422).json({ message: "Validation Error", result: error, success: false })
+            
+          }
         };
     }
     static forFile(args: FileValidationArgs[],

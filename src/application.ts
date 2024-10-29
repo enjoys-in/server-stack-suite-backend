@@ -49,10 +49,10 @@ class AppServer {
     private ApplyConfiguration(): void {
         Logging.dev("Applying Express Server Configurations")
         Modifiers.useRoot(AppServer.App)
-        AppServer.App.use(AppMiddlewares.setHeaders)
         AppServer.App.use(helmet());
         AppServer.App.use(morgan("dev"));
         // AppServer.App.use(Cors.useCors());
+        AppServer.App.use(AppMiddlewares.setHeaders)
         AppServer.App.use(bodyParser.json());
         AppServer.App.use(useHttpsRedirection);
         AppServer.App.use(SessionHandler.forRoot());
@@ -98,6 +98,7 @@ class AppServer {
      */
     private RegisterRoutes(): void {
         Logging.dev("Registering Routes")
+        
         AppServer.App.use(AppRoutes);
         RouteResolver.Mapper(AppServer.App, { listEndpoints: true,onlyPaths:false });
     }
@@ -119,7 +120,7 @@ class AppServer {
     }
     private InitServer() {
         const server = http.createServer(AppServer.App).listen(AppServer.PORT, () => {
-            AppEvents.emit('start')
+            AppEvents.emit('ready')            
             console.log(blue(`Application Started Successfully on ${CONFIG.APP.APP_URL}`),)
         })
         InitSocketConnection(server) 
@@ -129,6 +130,7 @@ class AppServer {
         })
         server.on('listening', () => {
             console.log('The server is now ready and listening for connections.');
+            AppEvents.emit('start')
         });
         server.on('error', (err: any) => {
             AppEvents.emit('error')
