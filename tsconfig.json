@@ -16,7 +16,7 @@
       "@services/*": ["./src/utils/services/*"],
       "@utils/*": ["./src/utils/*"],
       "@libs/*": ["./src/libs/*"],
-      "@types/*": ["./src/utils/types/*"],
+      "@interfaces/*": ["./src/utils/types/*"],
       "@validators/*": ["./src/utils/validators/*"]
     },
     "resolveJsonModule": true,

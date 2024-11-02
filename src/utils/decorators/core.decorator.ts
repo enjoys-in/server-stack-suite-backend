@@ -2,11 +2,11 @@ import { Observable } from 'rxjs';
 import * as path from 'path'
 import * as fs from 'fs'
 import type { NextFunction, Request, Response } from 'express';
-import { FileHandler, FileUploadOptions } from '../types/fileupload.interface';
+import { FileHandler, FileUploadOptions } from '../interfaces/fileupload.interface';
 import { validationResult } from 'express-validator';
 import { Logging } from '@/logs';
 import { CacheService } from '@utils/services/redis/cacheService';
-import { HttpStatusCode } from '../types/httpCode.interface';
+import { HttpStatusCode } from '../interfaces/httpCode.interface';
 import helpers from '../helpers';
 const cacheClient = new CacheService()
 

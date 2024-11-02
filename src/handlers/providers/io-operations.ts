@@ -1,6 +1,6 @@
  
 import * as fs from 'fs';
-import { SOCKET_PAYLOAD_TYPE } from '../../utils/types';
+import { SOCKET_PAYLOAD_TYPE } from '@/utils/interfaces';
 
  
 export class FileOperations {

@@ -82,12 +82,15 @@ export class CustomFunctions{
       }
         let macA; //mac address
         for(let key in nI){
+         
+        if (nI[key]) {
           const isInternetFacing = !nI[key][0].internal;
           if(isInternetFacing){
               //we have a macA we can use!
               macA = nI[key][0].mac + Math.floor(Math.random()*100000);
               break;
           }
+        }
       }
       return {
         macAddress: macA,

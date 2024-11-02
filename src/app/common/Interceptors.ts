@@ -1,8 +1,8 @@
 import { Application, Request, Response, NextFunction } from "express";
 
-import { Logging } from "@/logs"; 
-import { InterceptorsSettings } from "@/utils/interfaces";
+import { Logging } from "@/logs";  
 import { HttpException } from "@enjoys/exception";
+import { InterceptorsSettings } from "@/utils/interfaces/user.interface";
 
 const ORIGINAL_RESPONSE = { response: { info: "Interceptor Response" } }
 export class Interceptor {

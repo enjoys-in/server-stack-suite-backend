@@ -13,7 +13,7 @@ export class SystemOperations {
         child.on('error', (err) => {
             console.log(err);
         });
-        child.stdout.on('data', (data) => {
+        child.stdout!.on('data', (data) => {
             console.log(data);
         });
         child.on('close', (code) => {
@@ -32,7 +32,7 @@ export class SystemOperations {
         child.on('error', (err) => {
             console.log(err);
         });
-        child.stdout.on('data', (data) => {
+        child.stdout!.on('data', (data) => {
             console.log(data);
         });
         child.on('close', (code) => {
