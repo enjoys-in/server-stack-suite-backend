@@ -2,12 +2,12 @@ import { ErrorPagesEnitity } from "@/factory/entities/error_pages.entity"
 import { HostsEnitity } from "@/factory/entities/hosts.entity"
 import { InjectRepository } from "@/factory/typeorm"
 import { onEnableHook } from "@/utils/decorators"
-import { OnAppStart, OnModuleInit } from "@/utils/types/application.interface"
-import { DEFAULT_STATUS, HOST_TYPE } from "@/utils/types/user.interface"
+import { OnAppStart, OnModuleInit } from "@/utils/interfaces/application.interface"
+import { DEFAULT_STATUS, HOST_TYPE } from "@/utils/interfaces/user.interface"
 import { Repository } from "typeorm"
 import { CreateErrorPageDto, CreateHostDto } from "./dto/create-host.dto"
 import { UpdateErrorPageDto, UpdateHostDto } from "./dto/update-host.dto"
-import { SERVER_TYPE, SERVER_TYPES } from "@/utils/types"
+import { SERVER_TYPE, SERVER_TYPES } from "@/utils/interfaces"
 
  
 
@@ -56,7 +56,7 @@ async onAppStart() {
             </html> ` })
     }   
   }
-  create(createHostDto: CreateHostDto) {
+  create(createHostDto: UpdateHostDto) {
     return this.hostsRepository.save(createHostDto)
   }
   createErrorPage(createHostDto: CreateErrorPageDto) {

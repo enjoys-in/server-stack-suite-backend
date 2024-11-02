@@ -1,8 +1,8 @@
 import type { Request, Response, NextFunction } from "express";
 import FileValidator from '@/utils/validators/File.validator'
 import { validationResult } from "express-validator";
-import { FileValidationArgs, FileValidationOptions } from "@/utils/types/file-validator.interface";
-import { FileHandler } from "@/utils/types/fileupload.interface";
+import { FileValidationArgs, FileValidationOptions } from "@/utils/interfaces/file-validator.interface";
+import { FileHandler } from "@/utils/interfaces/fileupload.interface";
 
 export class Validator {
     /**

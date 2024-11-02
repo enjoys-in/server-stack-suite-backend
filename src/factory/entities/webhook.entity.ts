@@ -1,7 +1,7 @@
 import { Column, Entity } from "typeorm";
 import { CommonEntity } from "./common";
 import { UserEntity } from "./users.entity"
-import { DEFAULT_STATUS } from "@/utils/types/user.interface";
+import { DEFAULT_STATUS } from "@/utils/interfaces/user.interface";
 
 @Entity("webhooks")
 export class WebhookEntity extends CommonEntity {

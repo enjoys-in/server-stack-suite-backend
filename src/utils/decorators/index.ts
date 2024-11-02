@@ -2,10 +2,9 @@ import jwt from "jsonwebtoken";
 import { CONFIG } from "@/app/config";
 import { interval, timer } from "rxjs";
 import type { Request, Response, NextFunction } from "express";
-import { AllowedRoles, IUser } from "@/utils/types/user.interface";
-import { LIFECYCLE_HOOKS_KEY } from "../helpers/constants";
+import { AllowedRoles, IUser } from "@/utils/interfaces/user.interface";
+import { LIFECYCLE_HOOKS_KEY, PUBLIC_ROUTE_KEY } from "../helpers/constants";
 import { AppEvents } from "../services/Events";
-import { getSocketIo } from "../services/sockets/Sockets";
 
 function handleAuthorization(
     req: Request,
@@ -46,6 +45,13 @@ function handleAuthorization(
         return res.status(401).json({ message: "Token is invalid", result: null, success: false });
     }
 }
+
+export function PublicRoute(): MethodDecorator {
+    return (target, propertyKey, descriptor) => {
+        Reflect.defineMetadata(PUBLIC_ROUTE_KEY, true, descriptor.value!);
+    };
+}
+
 /**
  * Decorator function that checks if the user has the required roles to access a protected route.
  *

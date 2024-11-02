@@ -1,8 +1,8 @@
 
-import { HOST_TYPE } from "@/utils/types/user.interface";
+import { HOST_TYPE, IUser } from "@/utils/interfaces/user.interface";
 import type { Request, Response } from "express";
 import { HostsService } from "./host.service";
-import { SERVER_TYPES } from "@/utils/types";
+import { SERVER_TYPES } from "@/utils/interfaces";
 import { AppEvents } from "@/utils/services/Events";
 import { EVENT_CONSTANTS } from "@/utils/helpers/events.constants";
 import { COMMANDS, CRUD, PATHS, SERVER_TYPE_FILE_PATH } from "@/utils/paths";
@@ -12,6 +12,7 @@ import { mkdirSync, writeFile } from "fs";
 import { CreateErrorPageDto, CreateHostDto } from "./dto/create-host.dto";
 import { NginxSample } from "@/utils/libs/samples/ngnix/demo";
 import { CreateSslCertificateDto } from "../ssl-certificates/dto/create-ssl_certificate.dto";
+import { UserEntity } from "@/factory/entities/users.entity";
 
 const fileOperations = new FileOperations()
 const hostsService = new HostsService();
@@ -72,6 +73,7 @@ class HostController {
             }
             const server_nameUpdated = server_name.toUpperCase() as Uppercase<SERVER_TYPES>
             const createHostDto = req.body as CreateHostDto
+            const user = req.user as IUser
             if (await hostsService.findOneByDomainName(createHostDto.domain_name, server_name)) {
                 throw new Error("Proxy Host already exist with this domain name, Please Update it")
             }
@@ -81,8 +83,10 @@ class HostController {
             createHostDto.host_type = HOST_TYPE.PROXY
             // create host
             AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, `Preparing Host  ${createHostDto.domain_name}`,);
-            const hostInstance = await hostsService.create(createHostDto)
-            if (hostInstance) {
+            const userInstance = new UserEntity()
+            userInstance.id = user.uid
+          
+            
                 //create domain string[]
                 const server_names = createHostDto.domains.map((domain) => domain.source)
                 const filePath = SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].SITES_AVAILABLE_LOCATION_FILE.replace(":file_name", createHostDto.domain_name)
@@ -102,7 +106,7 @@ class HostController {
                     fileContent = fileContent.replace("# {custom_headers}", headers.join("\n"));
                 }
 
-                fileOperations.writeFile(filePath, fileContent)
+               await fileOperations.writeFile(filePath, fileContent)
 
                 // send  event to create ssl certificate if auto_ssl is true
                 if (createHostDto.auto_ssl) {
@@ -127,14 +131,21 @@ class HostController {
                     Certificate: ${createSslCertificateDto.ssl_certificates.cert_key}
                     `);
                     AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, prepareCMD);
+                    AppEvents.emit("create_auto_ssl", {
+                        ...createSslCertificateDto,
+                        user:userInstance
+                    });
                 }
 
                 // send  event to show logs and reload nginx and restart nginx 
                 AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, `Host Created ${createHostDto.domain_name} \n ${fileContent}`,);
+                const hostInstance = await hostsService.create({
+                    ...createHostDto,
+                    user: userInstance
+                })
+                res.json({ message: "OK", result: hostInstance, success: true });
 
-                res.json({ message: "OK", result: null, success: true });
-
-            }
+            
         } catch (error) {
             if (error instanceof Error) {
                 res.json({ message: error.message, result: null, success: false })

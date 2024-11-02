@@ -1,9 +1,14 @@
 import jwt from "jsonwebtoken";
-import type { Response, Request, NextFunction } from 'express'
+import { Response, Request, NextFunction } from 'express'
 import { CONFIG } from "@/app/config";
-import { IUser } from "@/utils/types/user.interface";
+import { IUser } from "@/utils/interfaces/user.interface";
+import { PUBLIC_ROUTE_KEY } from "@/utils/helpers/constants";
+import { RouteResolver } from "@/app/common/RouteResolver";
+import utils from "@/utils";
 
 export class JwtAuth {
+    
+    
     /**
      * Validates the user's authorization token.
      *
@@ -14,27 +19,46 @@ export class JwtAuth {
      */
     static validateUser(req: Request, res: Response, next: NextFunction) {
         try {
+        
+            const routeHandler = RouteResolver.mappedRoutes.find((layer:any) => layer.path === req.originalUrl)?.handler;            
+            const isPublicRoute = routeHandler && Reflect.getMetadata(PUBLIC_ROUTE_KEY, routeHandler);       
+         
+            if (isPublicRoute) {
+                return next();
+            }
             const authHeader = req.headers["authorization"] as String || null
 
             if (!authHeader) {
-                return res.json({ message: "Authorization header is missing", result: null, success: false })
+                res.json({ message: "Authorization header is missing", result: null, success: false })
+                res.end()
+                return;
             }
-            const token = authHeader?.replace("JWT ", "")
+             
+            const token = authHeader?.replace("Bearer ", "")
+           
             if (!token) {
-                return res.json({ message: "Authorization Token is missing", result: null, success: false })
+                res.json({ message: "Authorization Token is missing", result: null, success: false })
+                res.end()
+                return;
+
             }
-            const decodedToken = jwt.verify(token, CONFIG.SECRETS.JWT_SECRET_KEY) as IUser
-            if (!decodedToken) {
-                return res.json({ message: "Invalid Token", result: null, success: false })
-            }
-            if (decodedToken.role !== "User") {
-                return res.json({ message: "Access Denied", result: null, success: false })
-            }
-            req.user = decodedToken 
+            const decodedToken = utils.verifyJWT(token, { issuer: "ENJOYS",jwtid:"web"}) as IUser
             
+            if (!decodedToken) {
+                res.json({ message: "Invalid Token", result: null, success: false })
+                res.end()
+                return;
+            }
+          
+            req.user = decodedToken
+
             next()
         } catch (error: any) {
-            return res.json({ message: "Invalid Token", result: error.message, success: false })
+          console.log("error")
+            res.json({ message: "Invalid Token", result: error.message, success: false })
+            res.end()
+            return;
+
         }
 
     }
@@ -52,19 +76,29 @@ export class JwtAuth {
             const authHeader = req.headers["authorization"] as String || null
 
             if (!authHeader) {
-                return res.json({ message: "Authorization header is missing", result: null, success: false })
+                res.json({ message: "Authorization header is missing", result: null, success: false })
+                res.end()
+                return;
             }
-            const token = authHeader?.replace("JWT ", "")
+            const token = authHeader?.replace("Bearer ", "")
             if (!token) {
-                return res.json({ message: "Authorization Token is missing", result: null, success: false })
+                res.json({ message: "Authorization Token is missing", result: null, success: false })
+                res.end()
+                return;
             }
-            const decodedToken = jwt.verify(token, CONFIG.SECRETS.JWT_SECRET_KEY)
+            const decodedToken = utils.verifyJWT(token)
             if (!decodedToken) {
-                return res.json({ message: "Invalid Token", result: null, success: false })
+                res.json({ message: "Invalid Token", result: null, success: false })
+                res.end()
+                return;
             }
-            return res.json({ message: "Validated Token", result: decodedToken, success: true })
+            res.json({ message: "Validated Token", result: decodedToken, success: true })
+            res.end()
+            return;
         } catch (error: any) {
-            return res.json({ message: "Invalid Token", result: error.message, success: false })
+            res.json({ message: "Invalid Token", result: error.message, success: false })
+            res.end()
+            return;
         }
     }
 }

@@ -3,7 +3,7 @@ import { UsersHistoryEntity } from './users_history.entity';
 import { CommonEntity } from './common';
 import { HostsEnitity } from './hosts.entity';
 import { USER_STATUS } from '@/utils/helpers/constants';
-import { DASHBOAD_CONFIG } from '@/utils/types/user.interface';
+import { DASHBOAD_CONFIG } from '@/utils/interfaces/user.interface';
 
 
 

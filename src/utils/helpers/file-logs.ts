@@ -35,14 +35,14 @@ export async function HandleLogs() {
 
   const UpdateLogsToFileOnStartup = () => {
     const data = readFileSync(logPath, "utf8")
-    SAVE_LOGS.set("log", data)
-    console.log(SAVE_LOGS)
+    SAVE_LOGS.set("log", data)    
     return DeleteLogFile()
   }
   const UpdateLogsToFileOnShutDown = () => {
     const data = SAVE_LOGS.get("logs")
-    
-    InitLogs(data, LogLevel.INFO, true)
+    if (data) {      
+      InitLogs(data, LogLevel.INFO, true)
+    }
   }
   const DeleteLogFile = () => {
     unlinkSync(logPath)

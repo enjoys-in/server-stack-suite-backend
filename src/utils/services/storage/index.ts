@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
-import { FileHandler, FileUploadOptions } from "@utils/types/fileupload.interface"
+import { FileHandler, FileUploadOptions } from "@/utils/interfaces/fileupload.interface"
 import * as path from 'path'
 import * as fs from 'fs'
 import helpers from '@utils/helpers'

@@ -14,7 +14,7 @@ export class Cors {
             origin: ["http://localhost:3000"],
             optionsSuccessStatus: 200,
             methods: ["GET", "POST", "PUT", "DELETE"],
-            allowedHeaders: "Origin,X-Requested-With,Content-Type,Accept,Authorization,x-app-version,x-app-name,x-api-key,Access-Control-Allow-Origin,Cache-Control",
+            allowedHeaders: "Origin,X-Requested-With,Content-Type,Accept,Authorization,x-app-version,x-app-name,x-api-key,Access-Control-Allow-Origin,Cache-Control,Access-Control-Allow-Credentials",
             credentials: true
         }
     }

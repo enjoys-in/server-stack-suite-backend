@@ -2,7 +2,7 @@ import { Entity, Column, OneToOne, JoinColumn, Relation } from "typeorm"
 import { CommonEntity } from "./common"
 import { HostsEnitity } from "./hosts.entity"
 import { UserEntity } from "./users.entity"
-import { SSL_STATUS } from "@/utils/types/user.interface"
+import { SSL_STATUS } from "@/utils/interfaces/user.interface"
 
 @Entity("ssl_certificates")
 export class SSLCertificatesEnitity extends CommonEntity {

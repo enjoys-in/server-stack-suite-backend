@@ -32,7 +32,7 @@ export const InitSocketConnection = (server: HttpServer) => {
 
     ptyProcess.onData((data)=>socket.emit(SOCKET_EVENTS.RECIEVE_COMMAND, data));
 
-    socket.emit(SOCKET_EVENTS.SEND_COMMAND, (data:string)=>{
+    socket.on(SOCKET_EVENTS.SEND_COMMAND, (data:string)=>{
       ptyProcess.write(data)
     })
 

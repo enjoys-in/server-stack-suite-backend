@@ -1,13 +1,15 @@
 import type { Request, Response } from "express";
 import { CreateSslCertificateDto } from "./dto/create-ssl_certificate.dto";
 import { SslCertificatesService } from "./ssl_certificates.service";
-import { SERVER_TYPES } from "@/utils/types";
+import { SERVER_TYPES } from "@/utils/interfaces";
 import { HostsService } from "../hosts/host.service";
 import { COMMANDS } from "@/utils/paths";
 import { AppEvents } from "@/utils/services/Events";
 import { EVENT_CONSTANTS } from "@/utils/helpers/events.constants";
-import { HOST_TYPE } from "@/utils/types/user.interface";
+import { HOST_TYPE, IUser } from "@/utils/interfaces/user.interface";
 import { OnEvent } from "@/utils/decorators";
+import { UserEntity } from "@/factory/entities/users.entity";
+import { UpdateSslCertificateDto } from "./dto/update-ssl_certificate.dto";
 
 const  sslCertificatesService = new SslCertificatesService()
 const hostsService = new HostsService();
@@ -34,6 +36,7 @@ class SslCertificatesController {
     }
     async create(req: Request, res: Response) {
         try {
+            const user = req.user as IUser
 
             let { server_name } = req.params as { server_name: SERVER_TYPES };
             const createSslCertificateDto = req.body as CreateSslCertificateDto
@@ -57,7 +60,12 @@ class SslCertificatesController {
                 pk_key: `/etc/nginx/ssl/live/${createSslCertificateDto.host.primary_doman}/fullchain`,
                 cert_key: `/etc/nginx/ssl/live/${createSslCertificateDto.host.primary_doman}/privkey`,
             }
-            const data = await sslCertificatesService.create(createSslCertificateDto);
+            const userInstance = new UserEntity()
+            userInstance.id = user.uid
+            const data = await sslCertificatesService.create({
+                ...createSslCertificateDto,
+                user: userInstance
+            });
             res.json({
                 success: true,
                 message: "SSL Certificate Created for " + createSslCertificateDto.host.primary_doman,
@@ -74,7 +82,7 @@ class SslCertificatesController {
     }
 
     @OnEvent("create_auto_ssl")
-    private async createAutoSSL(payload:CreateSslCertificateDto) {
+    private async createAutoSSL(payload:UpdateSslCertificateDto) {
         try {
             await sslCertificatesService.create(payload);
           } catch (error:any) {

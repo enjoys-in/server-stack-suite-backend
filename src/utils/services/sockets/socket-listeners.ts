@@ -10,6 +10,7 @@ export class SocketListeners {
      }
     static handleDisconnection(socket: socket.Socket) { 
         console.log(`Socket disconnected: ${socket.id}`);
+        socket._cleanup()
     }
  
      sendPerformanceData(socket: socket.Socket) {

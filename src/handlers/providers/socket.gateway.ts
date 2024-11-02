@@ -3,7 +3,7 @@ import { exec } from 'child_process';
 import moment from 'moment';
 import { getSocketIo } from '@/utils/services/sockets/Sockets';
 import { SOCKET_EVENTS } from '@/utils/services/sockets/socketEventConstants';
-import { SOCKET_PAYLOAD_TYPE } from '@/utils/types';
+import { SOCKET_PAYLOAD_TYPE } from '@/utils/interfaces';
 import { SERVER_COMMANDS } from '@/utils/paths';
 import { CustomFunctions } from './custom-functions';
 

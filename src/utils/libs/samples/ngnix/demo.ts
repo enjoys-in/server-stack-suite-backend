@@ -1,4 +1,4 @@
-import { CustomHeader, CustomOptions } from "@/utils/types"
+import { CustomHeader, CustomOptions } from "@/utils/interfaces"
 
  
 type PrepareData = {
@@ -187,10 +187,10 @@ export class NginxSample {
     }
     static NextSSRApplication() { }
     static WithSocketSupport() { }
-    static WithCustomHeaders(headers: Record<string, string|CustomHeader[]>) {
+    static WithCustomHeaders(headers: Record<string, string>|CustomHeader[]) {
         let headersString = ''
         for (const key in headers) {
-            headersString += `proxy_set_header ${key} ${headers[key]} \n`
+            headersString += `proxy_set_header ${key} ${headers[key as keyof typeof headers]} \n`
         }
 
         return headersString

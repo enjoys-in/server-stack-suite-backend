@@ -2,7 +2,7 @@
 import { SystemLogsEntity } from '@/factory/entities/logs.entity';
 import { ChildProcess, spawn } from 'child_process'
 import { Repository } from "typeorm";
-import { LOGS_LEVEL_TYPES } from '../types';
+import { LOGS_LEVEL_TYPES } from '../interfaces';
 import { FileOperations } from '../../handlers/providers/io-operations';
 import { EVENT_CONSTANTS } from '../helpers/events.constants';
 import { InjectRepository } from '@/factory/typeorm';

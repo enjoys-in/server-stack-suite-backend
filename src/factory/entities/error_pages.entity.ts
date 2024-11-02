@@ -1,7 +1,7 @@
 import { Entity, Column } from "typeorm"
 import { CommonEntity } from "./common"
-import { DEFAULT_STATUS } from "@/utils/types/user.interface"
-import { SERVER_TYPE } from "@/utils/types"
+import { DEFAULT_STATUS } from "@/utils/interfaces/user.interface"
+import { SERVER_TYPE } from "@/utils/interfaces"
 
 
 @Entity("error_pages")

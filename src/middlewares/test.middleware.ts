@@ -1,4 +1,4 @@
-import { ExpressMiddleware } from "@/utils/types/application.interface";
+import { ExpressMiddleware } from "@/utils/interfaces/application.interface";
 import { NextFunction,Request,Response } from "express";
 
 export class TestMiddleware implements ExpressMiddleware {

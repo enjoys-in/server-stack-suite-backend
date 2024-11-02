@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import { AuthProviders, AuthProvidersKeys, AuthProvidersList, AuthProvidersScopes } from "@/utils/types";
+import { AuthProviders, AuthProvidersKeys, AuthProvidersList, AuthProvidersScopes } from "@/utils/interfaces";
 
 
 export class Providers {

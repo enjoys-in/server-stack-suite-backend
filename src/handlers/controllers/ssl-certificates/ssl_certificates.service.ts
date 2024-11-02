@@ -1,4 +1,4 @@
-import { SSL_STATUS } from "@/utils/types/user.interface";
+import { SSL_STATUS } from "@/utils/interfaces/user.interface";
 import { CreateSslCertificateDto } from "./dto/create-ssl_certificate.dto";
 import moment from "moment";
 import { SSLCertificatesEnitity } from "@/factory/entities/ssl_certificates.entity";
@@ -12,16 +12,16 @@ export class SslCertificatesService {
   constructor() {
     this.sslCertificatesRepository = InjectRepository(SSLCertificatesEnitity)
   }
-  create(createSslCertificateDto: CreateSslCertificateDto) {
-    return this.sslCertificatesRepository.insert({
+  create(createSslCertificateDto: UpdateSslCertificateDto) {
+    return this.sslCertificatesRepository.save({
       provider: createSslCertificateDto.provider,
-      domain: createSslCertificateDto.host.primary_doman,
+      domain: createSslCertificateDto.host!.primary_doman,
       host:{
-        id:+createSslCertificateDto.host.id
+        id:+createSslCertificateDto.host!.id
       },
       ssl_certificates:{
-        pk_key:createSslCertificateDto.ssl_certificates.pk_key,
-        cert_key:createSslCertificateDto.ssl_certificates.cert_key
+        pk_key:createSslCertificateDto.ssl_certificates!.pk_key,
+        cert_key:createSslCertificateDto.ssl_certificates!.cert_key
       },
       expires:moment(new Date().toISOString()).add(90, 'days').format('YYYY-MM-DD HH:mm:ss'),
       status: SSL_STATUS.INACTIVE

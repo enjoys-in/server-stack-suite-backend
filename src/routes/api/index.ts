@@ -3,10 +3,13 @@ import AppIntegrationRoutes from "./intergration";
 import { UserAuthController ,HostController ,BaseController,FirewallPortsController,SslCertificatesController} from "@/handlers/controllers";
 import { ReqValidator,HostValidator,ErrroPageValidator } from "@/utils/validators/Request.validator";
 import { Validator } from "@/middlewares/validator.middleware";
+import { JwtAuth } from "@/middlewares/auth.Middleware";
 
 const router = Router();
 // Auth
+router.get("/auth/me", JwtAuth.Me)
 router.post("/auth/login", ReqValidator.Login, UserAuthController.default.Login)
+router.get("/auth/logout", UserAuthController.default.Logout)
 router.post("/auth/register", ReqValidator.Register, UserAuthController.default.Register)
 router.post("/auth/update-password", ReqValidator.UpdatePassword, UserAuthController.default.UpdatePassword)
 

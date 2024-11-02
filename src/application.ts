@@ -51,11 +51,11 @@ class AppServer {
         Modifiers.useRoot(AppServer.App)
         AppServer.App.use(helmet());
         AppServer.App.use(morgan("dev"));
-        // AppServer.App.use(Cors.useCors());
-        AppServer.App.use(AppMiddlewares.setHeaders)
+        AppServer.App.use(Cors.useCors());
         AppServer.App.use(bodyParser.json());
         AppServer.App.use(useHttpsRedirection);
         AppServer.App.use(SessionHandler.forRoot());
+        // AppServer.App.use(AppMiddlewares.setHeaders)
         AppServer.App.use(cookieParser(CONFIG.SECRETS.SESSION_SECRET));
         AppServer.App.use(bodyParser.urlencoded({ extended: false }));
     }
@@ -70,8 +70,8 @@ class AppServer {
         Logging.dev("Middlewares Initiated")
         /** Enable Request headers for production */
         if (CONFIG.APP.APP_ENV.toUpperCase() === 'PRODUCTION' || CONFIG.APP.APP_ENV.toUpperCase() === 'PROD') {
-            AppServer.App.use(AppMiddlewares.IRequestHeaders)
-            AppServer.App.use(AppMiddlewares.isApiProtected)
+            AppServer.App.use(AppMiddlewares.IRequestHeaders())
+            AppServer.App.use(AppMiddlewares.isApiProtected())
         }
         /** Enable Signature header validation on api routes */
         // AppServer.App.use(AppMiddlewares.SecureApiRoutesWithValidateSignature)
@@ -119,6 +119,7 @@ class AppServer {
 
     }
     private InitServer() {
+       
         const server = http.createServer(AppServer.App).listen(AppServer.PORT, () => {
             AppEvents.emit('ready')            
             console.log(blue(`Application Started Successfully on ${CONFIG.APP.APP_URL}`),)

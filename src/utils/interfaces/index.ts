@@ -23,3 +23,10 @@ export interface SOCKET_PAYLOAD_FOR_PORT {
 }
 
 export type WEBHOOK_PROVIDER =  "discord" | "telegram" | "slack" | "microsoftteams" | "whatsapp" 
+
+export function PartialType<T>(BaseClass: new () => T): new () => Partial<T> {
+    abstract class PartialClassType {}
+    Object.assign(PartialClassType.prototype, BaseClass.prototype);
+    return PartialClassType as new () => Partial<T>;
+  }
+  

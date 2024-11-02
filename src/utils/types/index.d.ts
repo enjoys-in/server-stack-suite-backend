@@ -1,5 +1,5 @@
-import { FileHandler } from './fileupload.interface';
-import { IUser } from './user.interface'
+import { FileHandler } from './types/fileupload.interface';
+import { IUser } from './types/user.interface'
 
 export type Type<C extends object = object> = new (...args: any) => C;
 
@@ -13,8 +13,8 @@ declare module "express" {
     }
 
     interface Application {
-        enableHooks: () => void;
-        event: (event: Events, callback: () => void) => void;
+        enableHooks?: () => void;
+        event?: (event: Events, callback: () => void) => void;
     }
 }
 export type FileUploadInfo = {

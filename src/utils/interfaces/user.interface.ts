@@ -1,10 +1,8 @@
 import { JwtPayload } from "jsonwebtoken";
  
 interface User {
-    uid?: string;
-    email?: string;
-    role?: string;
-    status?: string;
+    uid: number;
+    email: string;   
 }
 export type IUser = User & JwtPayload
 

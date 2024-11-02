@@ -19,8 +19,8 @@ export class SessionHandler {
             resave: false,
             cookie: {
                 httpOnly: true,
-                secure: false,
-                maxAge: 1000 * 60 * 60 * 24 * 7
+                secure: CONFIG.APP.IS_PROD,
+                maxAge: 1000 * 60 * 60 * 24 *  Number(CONFIG.SECRETS.JWT_SECRET_EXPIRATION)
             },
 
         }

@@ -8,9 +8,9 @@ export class AppMiddlewares {
   static setHeaders(req: Request, res: Response, next: NextFunction) {
     res.setHeader('Content-Type', 'application/json');
     res.setHeader('Cache-Control', 'no-cache');
-    // res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Credentials', 'true');
     res.setHeader('Access-Control-Allow-Origin', req.headers.origin!);
-    res.setHeader('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,x-app-version,x-app-name,x-api-key,Access-Control-Allow-Origin,Cache-Control');
+    res.setHeader('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,x-app-version,x-app-name,x-api-key,Access-Control-Allow-Origin,Cache-Control,Access-Control-Allow-Credentials');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS,PATCH');
 
     next();
@@ -28,33 +28,35 @@ export class AppMiddlewares {
    * @param {NextFunction} next - The next middleware function.
    */
 
-  public static isApiProtected(req: Request, res: Response, next: NextFunction) {
-    Logging.dev(`API Route ${req.originalUrl} is Protected`)
-    const headers = req.headers;
-    const apiKey = headers["api_key"] || undefined;
-    if (typeof apiKey === "undefined") {
-      res.status(404).json({
-        success: false,
-        result: {
-          code: 404
-        },
-        message: "API_KEY is Required",
-      });
-      res.end();
-      return
+  public static isApiProtected() {
+    Logging.dev(`API Route is Protected`)
+    return (req: Request, res: Response, next: NextFunction) => {
+      const headers = req.headers;
+      const apiKey = headers["api_key"] || undefined;
+      if (typeof apiKey === "undefined") {
+        res.status(404).json({
+          success: false,
+          result: {
+            code: 404
+          },
+          message: "API_KEY is Required",
+        });
+        res.end();
+        return
+      }
+      if (apiKey !== process.env.API_KEY) {
+        res.status(401).json({
+          success: false,
+          status_code: {
+            code: 412
+          },
+          message: "Invalid KEY, Check API KEY",
+        });
+        res.end();
+        return
+      }
+      next();
     }
-    if (apiKey !== process.env.API_KEY) {
-      res.status(401).json({
-        success: false,
-        status_code: {
-          code: 412
-        },
-        message: "Invalid KEY, Check API KEY",
-      });
-      res.end();
-      return
-    }
-    next();
 
   }
   /**
@@ -64,52 +66,15 @@ export class AppMiddlewares {
    * @param {Response} res - The response object.
    * @param {NextFunction} next - The next function in the middleware chain.
    */
-  public static IRequestHeaders(req: Request, res: Response, next: NextFunction) {
+  public static IRequestHeaders() {
     Logging.dev("IRequestHeaders ID Initiated")
+    return (req: Request, res: Response, next: NextFunction) =>{
     const requestId = Helpers.RequestId();
     req.headers['X-Request-Id'] = requestId;
     res.setHeader('X-Request-Id', requestId);
     res.setHeader('X-Platform', "AIRAPI - ENJOYS");
     next();
+    }
   }
-  public static async SecureApiRoutesWithValidateSignature(req: Request, res: Response, next: NextFunction) {
-    if (!req.get(sigHeaderName)) {
-      return res.status(400).json({
-        success: false,
-        result: {
-          code: 400
-        },
-        message: "Signature is Required",
-      });
-    }
-
-    //Extract Signature header
-    const sig = req.get(sigHeaderName)
-    if (sig == null || sig == "") {
-      return res.status(400).json({
-        success: false,
-        result: {
-          code: 400
-        },
-        message: "Signature cant be empty or null",
-      });
-
-    }
-
-    // //Calculate HMAC
-    const originalUrl = `${req.protocol}://${req.get('host')}${req.originalUrl}`
-    const [method] = SetAppRoutes.get(req.path)
-    const digest = await new Security().GenerateSignature(method, originalUrl, JSON.stringify(req.body), req.clientSecret!)
-    // //Compare HMACs
-    if (sig.length !== digest.length || String(sig) !== String(digest)) {
-      return res.status(400).json({
-        success: false,
-        result: {
-          code: 400
-        },
-        message: "Invalid Signature",
-      });
-    }
-    return next();
-  }
+ 
 }

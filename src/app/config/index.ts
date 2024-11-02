@@ -3,10 +3,11 @@ const APP_ENV = String(process.env.APP_ENV) || "DEV"
 const APP_DOMAIN = String(process.env.APP_DOMAIN) || "localhost"
 const __config = {
     APP: {
+        IS_PROD :(APP_ENV === "DEV" || APP_ENV === "undefined") ? false : true,
         APP_PORT,
         APP_ENV,
         APP_DOMAIN,
-        APP_URL: APP_ENV === "DEV" || APP_ENV === "undefined" ? `http://localhost:${APP_PORT}` : `https://${APP_DOMAIN}`,
+        APP_URL: (APP_ENV === "DEV" || APP_ENV === "undefined") ? `http://localhost:${APP_PORT}` : APP_DOMAIN,
         API_KEY: String(process.env.API_KEY),
         ALLOWED_PRIMARY_DOMAINS: String(process.env.ALLOWED_PRIMARY_DOMAINS),
         MAIL_TEMPLATE_PATH: String(process.env.MAIL_TEMPLATE_PATH),

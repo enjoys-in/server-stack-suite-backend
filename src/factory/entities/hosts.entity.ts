@@ -2,8 +2,8 @@ import { Entity, Column, OneToOne, ManyToOne, OneToMany, JoinColumn, Relation, }
 import { CommonEntity } from "./common"
 import { SSLCertificatesEnitity } from "./ssl_certificates.entity"
 import { UserEntity } from "./users.entity"
-import { HOST_STATUS, HOST_TYPE } from "@/utils/types/user.interface"
-import { SERVER_TYPE,Domain } from "@/utils/types"
+import { HOST_STATUS, HOST_TYPE } from "@/utils/interfaces/user.interface"
+import { SERVER_TYPE,Domain } from "@/utils/interfaces"
  
 
 @Entity("hosts")
