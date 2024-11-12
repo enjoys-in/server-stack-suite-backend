@@ -20,6 +20,7 @@ import { CreateConnection } from '@factory/typeorm'
 import { AppLifecycleManager } from '@app/modules/appLifecycle';
 import { AppEvents } from './utils/services/Events';
 import { Modifiers } from './app/common/Modifiers';
+import cors from 'cors'
 
 
 
@@ -51,11 +52,16 @@ class AppServer {
         Modifiers.useRoot(AppServer.App)
         AppServer.App.use(helmet());
         AppServer.App.use(morgan("dev"));
-        AppServer.App.use(Cors.useCors());
+        AppServer.App.use(cors({
+            origin: "http://localhost:3000",
+            optionsSuccessStatus: 200,
+            methods: ["GET", "POST", "PUT", "DELETE"],
+            allowedHeaders: "Origin,X-Requested-With,Content-Type,Accept,Authorization,x-app-version,x-app-name,x-api-key,Access-Control-Allow-Origin,Cache-Control,Access-Control-Allow-Credentials",
+            credentials: true
+        }));
         AppServer.App.use(bodyParser.json());
         AppServer.App.use(useHttpsRedirection);
         AppServer.App.use(SessionHandler.forRoot());
-        // AppServer.App.use(AppMiddlewares.setHeaders)
         AppServer.App.use(cookieParser(CONFIG.SECRETS.SESSION_SECRET));
         AppServer.App.use(bodyParser.urlencoded({ extended: false }));
     }
@@ -100,7 +106,7 @@ class AppServer {
         Logging.dev("Registering Routes")
         
         AppServer.App.use(AppRoutes);
-        RouteResolver.Mapper(AppServer.App, { listEndpoints: true,onlyPaths:false });
+        RouteResolver.Mapper(AppServer.App, { listEndpoints: false,onlyPaths:false });
     }
     /**
      * ExceptionHandler function.

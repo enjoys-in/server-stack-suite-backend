@@ -1,22 +1,26 @@
-import {  DataSource } from 'typeorm'
-import { CONFIG } from '.'
-const DBURL = { url: `postgres://${CONFIG.DATABASE.DB_USER}:${CONFIG.DATABASE.DB_PASS}@${CONFIG.DATABASE.DB_HOST}:${+CONFIG.DATABASE.DB_PORT}/${CONFIG.DATABASE.DB_NAME}` }
-const DB_OPTIONS = {
-    host: CONFIG.DATABASE.DB_HOST || "localhost",
-    port: +CONFIG.DATABASE.DB_PORT,
-    username: CONFIG.DATABASE.DB_USER,
-    password: CONFIG.DATABASE.DB_PASS,
-    database: CONFIG.DATABASE.DB_NAME,
+import { DataSource } from 'typeorm'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+import { Logging } from '@/logs'
+
+let dbConfig;
+// Read the config file
+const path = join("/", "opt", "server-stack-suite", "config.json")
+try {
+      dbConfig = JSON.parse(readFileSync(path, "utf8"))
+} catch (error) {
+    Logging.dev(`Error reading config file: ${path} \n File does not exist`,"error")
+    process.exit(1)
 }
-const DB = CONFIG.DATABASE.DATABASE_URL === "undefined" ? DBURL : DB_OPTIONS
+const DB = dbConfig.db
 export const AppDataSource = new DataSource({
     ...DB,
     type: "postgres",
-    synchronize: CONFIG.APP.APP_ENV === "DEV" ? true : false,
+    synchronize: true,
     logging: false,
     entities: ["build/factory/entities/**/*.js"],
     subscribers: [],
-    migrationsRun: CONFIG.APP.APP_ENV === "DEV" ? true : false,
+    migrationsRun: true,
     migrations: ["build/factory/migrations/**/*.js"],
     migrationsTableName: "migration_table",
     ssl: false,

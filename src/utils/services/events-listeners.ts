@@ -9,27 +9,25 @@ import { InjectRepository } from '@/factory/typeorm';
 import { InitLogs } from '../helpers/file-logs';
 import { OnEvent } from '../decorators';
 import { SocketGateway } from '@/handlers/providers/socket.gateway';
-import { SERVER_COMMANDS } from '../paths';
+import { AppEvents } from './Events';
 
-
-
+ 
+const fileOperations = new FileOperations()
+const socket = new SocketGateway()
+const logsRepo = InjectRepository(SystemLogsEntity)
 export class EventsListeners {
-  private readonly logsRepo!: Repository<SystemLogsEntity>
-  private readonly socket: SocketGateway
-  private readonly fileOperations!: FileOperations
-  constructor(){
-    this.fileOperations = new FileOperations()
-    this.socket = new SocketGateway()
-    this.logsRepo = InjectRepository(SystemLogsEntity)
-  }
+   constructor(){
+   
+   }
+ 
   private insertLogsInDB({ title, log, level }: { title: string, log: string, level: LOGS_LEVEL_TYPES }) {
-    return this.logsRepo.save({ title, log, level })
+    return logsRepo.save({ title, log, level })
   }
   // ERROR RELATED EVENTS LISTENERS
   @OnEvent(EVENT_CONSTANTS.LOGS.INFO, { async: true })
   handleLogs(message: string) {
     InitLogs(message, "INFO")
-    this.socket.sendPayload({
+    socket.sendPayload({
       level: "info",
       message
     })
@@ -38,7 +36,7 @@ export class EventsListeners {
   @OnEvent(EVENT_CONSTANTS.LOGS.ERROR, { async: true })
   handleErrorEvent(message: string) {
     InitLogs(message, "ERROR")
-    this.socket.sendPayload({
+    socket.sendPayload({
       level: "error",
       message
     })
@@ -47,7 +45,7 @@ export class EventsListeners {
   @OnEvent(EVENT_CONSTANTS.LOGS.WARN, { async: true })
   handleErrorEvent3(message: string) {
     InitLogs(message, "ERROR")
-    this.socket.sendPayload({
+    socket.sendPayload({
       level: "warn",
       message
     })
@@ -55,7 +53,7 @@ export class EventsListeners {
   @OnEvent(EVENT_CONSTANTS.LOGS.DEBUG, { async: true })
   handleErrorEvent4(message: string) {
     InitLogs(message, "ERROR")
-    this.socket.sendPayload({
+    socket.sendPayload({
       level: "debug",
       message
     })
@@ -64,21 +62,20 @@ export class EventsListeners {
   @OnEvent(EVENT_CONSTANTS.LOGS.LOG, { async: true })
   handleErrorEvent5(message: string) {
     InitLogs(message, "ERROR")
-    this.socket.sendPayload({
+    socket.sendPayload({
       level: "log",
       message
     })
   }
-  @OnEvent(EVENT_CONSTANTS.SERVER_COMMAND, { async: true })
-  handleRunServerCommand(message: keyof typeof SERVER_COMMANDS) {
-    this.handleLogs(message)
-    this.socket.RESTART_SERVER(message)
-  }
+  
   @OnEvent(EVENT_CONSTANTS.RUN_COMMAND, { async: true })
-  handleRunCommand(message: string) {
+  handleRunCommand(message: string) {    
     this.handleLogs(message)
-    this.socket.sendWithCMD(message)
+    socket.sendWithCMD(message)
   }
 
-
+  handleRunCommand2(message: string) {    
+    this.handleLogs(message)
+    socket.sendWithCMD(message)
+  }
 }

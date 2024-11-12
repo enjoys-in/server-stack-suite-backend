@@ -1,19 +1,32 @@
-import { formatDate } from "@/utils/helpers/file-logs";
+import { formatDate, HandleLogs } from "@/utils/helpers/file-logs";
 import type { Request, Response } from "express";
-import { existsSync, readFileSync, writeFileSync } from "fs";
+import { existsSync,  readFileSync, writeFile, writeFileSync } from "fs";
 import { join } from "path";
 import AppService from '@handlers/providers/app.provider'
 const SERVER_CONFIG = join(process.cwd(), "./sever.config.json")
 const LOG_DIR = join(process.cwd(), "logs")
 import Client from 'ssh2-sftp-client'
 import { Logging } from "@/logs";
+import { PATHS, SERVER_TYPE_FILE_PATH } from "@/utils/paths";
+import { OnAppShutDown, OnAppStart } from "@/utils/interfaces/application.interface";
+import { onEnableHook } from "@/utils/decorators";
 
-class BaseController {
-    
+
+@onEnableHook()
+class BaseController implements OnAppStart, OnAppShutDown {
+
     constructor() {
         this.setUpServerStackSuite()
     }
-  
+    async onAppShutDown() {
+        const { UpdateLogsToFileOnShutDown } = await HandleLogs();
+        UpdateLogsToFileOnShutDown()
+    }
+    async onAppStart() {
+        const { UpdateLogsToFileOnStartup } = await HandleLogs();
+        UpdateLogsToFileOnStartup()
+
+    }
     async readServerAnaylitcs(req: Request, res: Response) {
         try {
             const analytics = await AppService.getAnalytics()
@@ -129,7 +142,7 @@ class BaseController {
         try {
             let infoStack: any
             if (existsSync(SERVER_CONFIG)) {
-               Logging.dev("Setting up server Done")
+                Logging.dev("Setting up server Done")
             } else {
 
                 const Services = [
@@ -225,16 +238,32 @@ class BaseController {
                 }
                 writeFileSync(SERVER_CONFIG, JSON.stringify(infoStack))
             }
-           
+
         } catch (error) {
-             console.log(error)
+            console.log(error)
         }
     }
 
-    async getFiles(req: Request, res: Response) {
-        try {
+    async getFiles(req: Request, res: Response) {      
+          try {
+            const { type, server } = req.query as { type: string, server: string };
+            if (server?.toLowerCase() !== "nginx") {
+                throw new Error("Only Ngnix server is supported")
+            }
+            if(type){
+                const filePath = SERVER_TYPE_FILE_PATH[server.toUpperCase() as keyof typeof SERVER_TYPE_FILE_PATH].SITES_ENABLED_LOCATION_FILE.replace(":file_name", "")
+                const files = AppService.listFilesRecursively(String(filePath)).sort();
+                
+                res.json({
+                    success: true,
+                    message: "Files List",
+                    result:files
+                }).end();
+                return 
+            }
+
             const dirPath = req.query.path! || process.cwd();
-           
+
             const files = AppService.listFilesRecursively(String(dirPath)).sort();
 
             res.json({
@@ -287,7 +316,75 @@ class BaseController {
             })
         }
     }
+    async getServerFileContent(req: Request, res: Response) {
+        try {
+            const { domain_name, server } = req.query as { domain_name: string, server: string };
+            if (server?.toLowerCase() !== "nginx") {
+                throw new Error("Only Ngnix server is supported")
+            }
+            const filePath = SERVER_TYPE_FILE_PATH[server.toUpperCase() as keyof typeof SERVER_TYPE_FILE_PATH].SITES_ENABLED_LOCATION_FILE.replace(":file_name", domain_name)
+            const fileData = readFileSync(String(filePath), { encoding: 'utf-8' });
 
+            res.json({
+                success: true,
+                message: "Opening File Content",
+                result: fileData
+            })
+        } catch (error) {
+            if (error instanceof Error) {
+                res.json({
+                    success: true,
+                    message: error.message,
+                    result: error
+                })
+                return
+            }
+
+            res.json({
+                success: false,
+                message: "Something went wrong",
+                result: null
+            })
+        }
+    }
+    async updateServerFileContent(req: Request, res: Response) {
+        try {
+            const { domain_name, server } = req.query as { domain_name: string, server: string };
+            if (server?.toLowerCase() !== "nginx") {
+                throw new Error("Only Ngnix server is supported")
+            }
+            const filePath = SERVER_TYPE_FILE_PATH[server.toUpperCase() as keyof typeof SERVER_TYPE_FILE_PATH].SITES_ENABLED_LOCATION_FILE.replace(":file_name", domain_name)
+            
+             writeFile(String(filePath),  req.body.data.content,(err)=>{
+                if(err){
+                    console.error(err);
+                 return     
+                 }
+                 console.log("first")
+             });
+
+            res.json({
+                success: true,
+                message: "Updated File Content",
+                result: {}
+            })
+        } catch (error) {
+            if (error instanceof Error) {
+                res.json({
+                    success: true,
+                    message: error.message,
+                    result: error
+                })
+                return
+            }
+
+            res.json({
+                success: false,
+                message: "Something went wrong",
+                result: null
+            })
+        }
+    }
     async sftpUpload(req: Request, res: Response) {
         const sftp = new Client();
         try {

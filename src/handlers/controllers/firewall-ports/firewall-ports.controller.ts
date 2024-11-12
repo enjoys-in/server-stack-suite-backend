@@ -8,25 +8,21 @@ import { AppEvents } from "@/utils/services/Events";
 import helpers from "@/utils/helpers";
 
 const execAsync = promisify(exec);
-
+const firewallsPortsService = new FirewallsPortsService();
 class FirewallPortsController {
-    private readonly firewallsPortsService: FirewallsPortsService
-    constructor() {
-        this.firewallsPortsService = new FirewallsPortsService();
-    }
+    
     async findAll(req: Request, res: Response) {
         try {
-            const getFirewallPorts = COMMANDS.BASIX.FIREWALL.RUNNING_PORTS
+            const getFirewallPorts = COMMANDS.BASIX.FIREWALL.RUNNING_PORTS           
             const { stderr, stdout } = await execAsync(getFirewallPorts);
             if (stderr) {
                 throw new Error(stderr)
             }
+            
             res.json({
-                message: "OK", result: {
-                    success: true,
-                    message: "Firewall Ports",
-                    result: await this.firewallsPortsService.parseProcessList(stdout)
-                }, success: true
+                success: true,
+                message: "Firewall Ports",
+                result: await firewallsPortsService.parseProcessList(stdout)
             });
 
         } catch (error) {

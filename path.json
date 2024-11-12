@@ -1,0 +1,15 @@
+{  
+    "paths": {
+        "@/*": ["./src/*"],
+        "@app/*": ["./src/app/*"],
+        "@handlers/*": ["./src/handlers/*"],
+        "@factory/*": ["./src/factory/*"],
+        "@middlewares/*": ["./src/middlewares/*"],
+        "@helpers/*": ["./src/utils/helpers/*"],
+        "@services/*": ["./src/utils/services/*"],
+        "@utils/*": ["./src/utils/*"],
+        "@libs/*": ["./src/libs/*"],
+        "@interfaces/*": ["./src/utils/types/*"],
+        "@validators/*": ["./src/utils/validators/*"]
+      }
+}

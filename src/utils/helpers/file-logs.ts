@@ -1,4 +1,4 @@
-import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync } from 'fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFile, writeFileSync } from 'fs';
 import { join } from 'path';
 
 const LOG_DIR = join(process.cwd(), "logs")
@@ -12,7 +12,7 @@ export enum LogLevel {
   LOG = 'LOG',
   DEBUG = 'DEBUG'
 }
- type LogLevelKey = keyof typeof LogLevel
+type LogLevelKey = keyof typeof LogLevel
 // Helper function to format date
 export const formatDate = (date: Date) => {
   const year = date.getFullYear();
@@ -32,24 +32,24 @@ export async function HandleLogs() {
   const now = new Date();
   const date = formatDate(now);
   const logPath = join(LOG_DIR, `${date}.log`);
-
+  if (!existsSync(logPath)) {
+    writeFileSync(logPath, "");
+  }
   const UpdateLogsToFileOnStartup = () => {
     const data = readFileSync(logPath, "utf8")
-    SAVE_LOGS.set("log", data)    
-    return DeleteLogFile()
+    SAVE_LOGS.set("log", data)
+ 
+    return
   }
   const UpdateLogsToFileOnShutDown = () => {
     const data = SAVE_LOGS.get("logs")
-    if (data) {      
+    if (data) {
       InitLogs(data, LogLevel.INFO, true)
     }
   }
-  const DeleteLogFile = () => {
-    unlinkSync(logPath)
-  }
-
+ 
   return {
-    UpdateLogsToFileOnStartup, DeleteLogFile, UpdateLogsToFileOnShutDown, path: logPath
+    UpdateLogsToFileOnStartup, UpdateLogsToFileOnShutDown, path: logPath
   }
 }
 // Function to log message
@@ -69,13 +69,7 @@ export const InitLogs = (message: string, level: LogLevelKey = "INFO", saveToFil
   // Format log message with timestamp and log level
   const logEntry = `[${timestamp}] [${level}] ${message}\n`;
 
-  // Append log message to file
-  if (saveToFile) {
-    appendFileSync(logFile, logEntry, 'utf8');
-
-  } else {
-    SAVE_LOGS.set("log", logEntry)
-
-  }
+  appendFileSync(logFile, logEntry, 'utf8');
+  
 };
 

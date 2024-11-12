@@ -198,7 +198,7 @@ export function onEnableHook() {
 }
 
 export function OnEvent(event: string, options?: { async: boolean }) {
-    return function (target: any, propertyKey: string, descriptor: PropertyDescriptor) {
+    return  (target: any, propertyKey: string, descriptor: PropertyDescriptor) =>{
       const originalMethod = descriptor.value;
   
       // Register the event listener

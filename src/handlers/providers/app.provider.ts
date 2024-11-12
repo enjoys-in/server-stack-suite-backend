@@ -111,6 +111,7 @@ class AppService {
         return this.userRepo.find()
     }
     listFilesRecursively = (dirPath: string): any[] => {
+      try {
         const files: fs.Dirent[] = fs.readdirSync(dirPath, { withFileTypes: true });
 
         const directories = files
@@ -141,6 +142,9 @@ class AppService {
             });
 
         return [...directories, ...regularFiles];
+      } catch (error) {
+        throw error
+      }
     }
 }
 

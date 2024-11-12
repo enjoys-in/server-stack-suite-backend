@@ -14,12 +14,7 @@ import { UpdateSslCertificateDto } from "./dto/update-ssl_certificate.dto";
 const  sslCertificatesService = new SslCertificatesService()
 const hostsService = new HostsService();
 class SslCertificatesController {
-   
-
-    constructor() {
-      
-
-    }
+    
     async findAll(req: Request, res: Response) {        
         try {
             res.json({    success: true,

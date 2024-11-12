@@ -10,9 +10,7 @@ import { CustomFunctions } from './custom-functions';
 const func = new CustomFunctions()
 
 const io = getSocketIo()
-export class SocketGateway {
-
-    constructor() { }
+export class SocketGateway { 
 
     sendNotificationOnly(payload: Record<string, any>) {
         io.emit(SOCKET_EVENTS.NOTIFICATIONS, JSON.stringify(payload))

@@ -8,7 +8,7 @@ import { EVENT_CONSTANTS } from "@/utils/helpers/events.constants";
 import { COMMANDS, CRUD, PATHS, SERVER_TYPE_FILE_PATH } from "@/utils/paths";
 import { FileOperations } from "@/handlers/providers/io-operations";
 import path from "path";
-import { mkdirSync, writeFile } from "fs";
+import { mkdirSync, unlinkSync, writeFile, writeFileSync } from "fs";
 import { CreateErrorPageDto, CreateHostDto } from "./dto/create-host.dto";
 import { NginxSample } from "@/utils/libs/samples/ngnix/demo";
 import { CreateSslCertificateDto } from "../ssl-certificates/dto/create-ssl_certificate.dto";
@@ -89,7 +89,7 @@ class HostController {
             
                 //create domain string[]
                 const server_names = createHostDto.domains.map((domain) => domain.source)
-                const filePath = SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].SITES_AVAILABLE_LOCATION_FILE.replace(":file_name", createHostDto.domain_name)
+                const filePath = SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].SITES_ENABLED_LOCATION_FILE.replace(":file_name", createHostDto.domain_name)
                 let fileContent = NginxSample.DeployApi(server_names, createHostDto.destination, createHostDto.path)
                 // write to file in path
                 AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, `Writing Config File  ${createHostDto.domain_name}`);
@@ -171,7 +171,7 @@ class HostController {
             const server_nameUpdated = server_name.toUpperCase() as Uppercase<SERVER_TYPES>
 
             await hostsService.deleteHost(domain_name)
-            const filePath = SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].SITES_AVAILABLE_LOCATION_FILE.replace(":file_name", domain_name)
+            const filePath = SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].SITES_ENABLED_LOCATION_FILE.replace(":file_name", domain_name)
             if (fileOperations.checkFileExists(filePath)) {
                 fileOperations.deleteFile(filePath)
             }
@@ -217,7 +217,7 @@ class HostController {
 
             //create domain string[]
             const server_names = createHostDto.domains.map((domain) => domain.source)
-            const filePath = SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].SITES_AVAILABLE_LOCATION_FILE.replace(":file_name", createHostDto.domain_name)
+            const filePath = SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].SITES_ENABLED_LOCATION_FILE.replace(":file_name", createHostDto.domain_name)
             let fileContent = NginxSample.DeployApi(server_names, createHostDto.destination, createHostDto.path)
             // write to file in path
             AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, `Writing Config File  ${createHostDto.domain_name}`);
@@ -287,12 +287,12 @@ class HostController {
             }
             const createErrorPageDto = req.body as CreateErrorPageDto
             await hostsService.createErrorPage(createErrorPageDto)
-            const filePath = CreateErrorPageDto.name === "default" ?
-                PATHS.NGINX.ERROR_PAGES.replace(":{file_name}", createErrorPageDto.name)
+            const filePath = CreateErrorPageDto.name === "default" ? PATHS.NGINX.INDEX_HTML
                 :
-                PATHS.NGINX.ERROR_PAGES.replace("custom_{file_name}", "index")
+                PATHS.NGINX.ERROR_PAGES.replace("{file_name}", createErrorPageDto.name)
+                writeFileSync(filePath, createErrorPageDto.content) // write to file in path
 
-            AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, { filePath, content: createErrorPageDto.content })
+            AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, createErrorPageDto.name+".html Error Page has been Created")
 
             res.json({ message: "Error Page has been Created", result: {}, success: true });
 
@@ -319,7 +319,7 @@ class HostController {
     }
     async getOneErrorPage(req: Request, res: Response) {
         try {
-            const id = req.query.id
+            const id = req.params.id
             res.json({ message: "OK", result: await hostsService.getSingleErrorPage(+id!), success: true });
 
         } catch (error) {
@@ -332,7 +332,13 @@ class HostController {
     }
     async deleteErrorPage(req: Request, res: Response) {
         try {
+            let { server_name } = req.params as { server_name: SERVER_TYPES };
 
+            if (server_name !== "nginx") {
+                throw new Error("Only Nginx is supported for now")
+            }        
+            const filePath = PATHS.NGINX.ERROR_PAGES.replace("{file_name}", req.body.name)
+            unlinkSync(filePath)
             res.json({ message: "Error Page has Been Deleted ", result: await hostsService.deleteErrorPage(+req.body.id), success: true });
 
         } catch (error) {
@@ -353,28 +359,29 @@ class HostController {
             }
             const server_nameUpdated = server_name.toUpperCase() as Uppercase<SERVER_TYPES>
 
-            const { id, ...rest } = req.body
+            const { id, ...rest } = req.body as CreateErrorPageDto & { id:number }
             AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, "Updating Error Page")
             await hostsService.updateErrorPage(+id, { content: rest.content, status: rest.status })
 
-            const indexHtmlFile = SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].INDEX_HTML
-            AppEvents.emit(EVENT_CONSTANTS.RUN_COMMAND, CRUD.DELETE.FILE.replace("{path}", indexHtmlFile));
-            const filePath = path.join("/home/mullayam", indexHtmlFile);
-            mkdirSync(path.dirname(filePath), { recursive: true });
+            const filePath = CreateErrorPageDto.name === "default" ? 
+            SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].INDEX_HTML
+            : 
+            SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].ERROR_PAGES.replace("{file_name}", rest.name)
+           
 
             AppEvents.emit(EVENT_CONSTANTS.RUN_COMMAND, server_name.toUpperCase());
 
             writeFile(filePath, req.body.content, (err) => {
                 if (err) {
-                    AppEvents.emit(EVENT_CONSTANTS.LOGS.ERROR, "Error writing at " + indexHtmlFile);
+                    AppEvents.emit(EVENT_CONSTANTS.LOGS.ERROR, "Error writing at " + filePath);
                     throw new Error("Unable to write data to  File")
 
-                } else {
-                    AppEvents.emit(EVENT_CONSTANTS.RUN_COMMAND, CRUD.DELETE.FILE.replace("{path}", indexHtmlFile));
+                } else { 
+                    AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, rest.name+".html Error Page has been Created")
                 }
             });
 
-            res.json({ message: "OK", result: null, success: true });
+            res.json({ message: rest.name+".html Error Page has been Created", result: null, success: true });
 
         } catch (error) {
             if (error instanceof Error) {

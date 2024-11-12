@@ -28,7 +28,7 @@ export const SERVER_TYPE_FILE_PATH = {
         ERROR_PAGES: "/usr/share/nginx/html/custom_{file_name}.html",
         DEAFULT_CONFIGURATION_FILE: "/etc/nginx/nginx.conf",
         SITES_AVAILABLE_LOCATION_FILE: "/etc/nginx/sites-available/:file_name",
-        SITES_ENABLED_LOCATION_FILE: "/etc/nginx/sites-enabled:file_name",
+        SITES_ENABLED_LOCATION_FILE: "/etc/nginx/sites-enabled/:file_name",
 
     },
     HTTPD: {
@@ -37,7 +37,7 @@ export const SERVER_TYPE_FILE_PATH = {
         INDEX_HTML: "/var/www/html/index.nginx-debian.html",
         ERROR_PAGES: "/usr/share/nginx/html/custom_{file_name}.html",
         SITES_AVAILABLE_LOCATION_FILE: "/etc/nginx/sites-available/:file_name",
-        SITES_ENABLED_LOCATION_FILE: "/etc/nginx/sites-enabled:file_name",
+        SITES_ENABLED_LOCATION_FILE: "/etc/nginx/sites-enabled/:file_name",
     },
     APACHE: {
         DEFAULT: "/etc/apache2",
@@ -45,7 +45,7 @@ export const SERVER_TYPE_FILE_PATH = {
         INDEX_HTML: "/var/www/html/index.nginx-debian.html",
         ERROR_PAGES: "/usr/share/nginx/html/custom_{file_name}.html",
         SITES_AVAILABLE_LOCATION_FILE: "/etc/nginx/sites-available/:file_name",
-        SITES_ENABLED_LOCATION_FILE: "/etc/nginx/sites-enabled:file_name",
+        SITES_ENABLED_LOCATION_FILE: "/etc/nginx/sites-enabled/:file_name",
 
     },
     // CADDY: {

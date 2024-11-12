@@ -21,6 +21,8 @@ router.get("/first-setup", BaseController.default.setUpServerStackSuite)
 router.get("/sftp/upload", BaseController.default.sftpUpload)
 router.get("/files", BaseController.default.getFiles)
 router.get("/file-content", BaseController.default.getFileContent)
+router.get("/server-file-content", BaseController.default.getServerFileContent)
+router.put("/server-file-content", BaseController.default.updateServerFileContent)
 
 
 
@@ -45,6 +47,8 @@ router.get("/:server_name/hosts/d/:domain_name",Validator.forFeature(HostValidat
 router.put("/:server_name/hosts/proxy/:domain_name?", HostController.default.updateHost)
 router.delete("/:server_name/hosts/proxy/:domain_name?", HostController.default.deleteHost)
 router.post("/:server_name/hosts/proxy", HostController.default.addNewHosts)
+
+// Error Page Routes
 router.post("/:server_name/hosts/error-page", HostController.default.AddNewErrorPage)
 router.get("/:server_name/hosts/error-page", HostController.default.getAllErrorPage)
 router.get("/:server_name/hosts/error-page/:id", HostController.default.getOneErrorPage)

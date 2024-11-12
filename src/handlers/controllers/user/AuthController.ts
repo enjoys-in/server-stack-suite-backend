@@ -1,40 +1,16 @@
 import { CONFIG } from "@/app/config";
 import { UserEntity } from "@/factory/entities/users.entity";
 import { InjectRepository } from "@/factory/typeorm";
-import { Logging } from "@/logs";
 import utils from "@/utils";
-import { onEnableHook, PublicRoute } from "@/utils/decorators";
-import { OnAppStart } from "@/utils/interfaces/application.interface";
-import { USER_STATUS } from "@/utils/interfaces/user.interface";
+import { PublicRoute } from "@/utils/decorators";
 import type { Request, Response } from "express";
 
 import moment from "moment";
 
 
-@onEnableHook()
-class AuthController implements OnAppStart {
 
-    async onAppStart() {
-        const isUser = await InjectRepository(UserEntity).findOne({
-            where: {
-                username: 'admin',
-            }
-        })
-        if (isUser) return
-        const password = "Admin@123"
-        const user = await InjectRepository(UserEntity).save({
-            username: 'admin',
-            password: await utils.HashPassword(password),
-            email: 'admin@admin.com',
-            name: 'Admin',
-            status: USER_STATUS.ACTIVE,
-            isfirstlogin: true,
+class AuthController {
 
-        })
-        Logging.dev("SuperUser has been created", "notice")
-        console.log(`Username : ${user.username}`)
-        console.log(`password : ${password}`)
-    }
 
     @PublicRoute()
     async Login(req: Request, res: Response) {
@@ -83,10 +59,10 @@ class AuthController implements OnAppStart {
                     }
                 })
             }
-          
+
             res.json({
                 message: "Logout SuccessFully",
-                result: req.session||null, success: true
+                result: req.session || null, success: true
             })
         } catch (error: any) {
             if (error instanceof Error) {

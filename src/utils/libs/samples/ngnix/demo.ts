@@ -1,6 +1,6 @@
 import { CustomHeader, CustomOptions } from "@/utils/interfaces"
 
- 
+
 type PrepareData = {
     [key in keyof CustomOptions]: string | ""
 }
@@ -10,6 +10,20 @@ export class NginxSample {
     }
     private static ipWhitelist(ip: string[]) {
 
+    }
+    static ErrorPages() {
+        return `
+        error_page 404 /custom_404.html;
+        location = /custom_404.html {
+                root /usr/share/nginx/html;
+                internal;
+        }
+
+        error_page 500 502 503 504 /custom_50x.html;
+        location = /custom_50x.html {
+                root /usr/share/nginx/html;
+                internal;
+        }`
     }
     static DeafultServer(server_name: string[], destination: string, path: string, options?: CustomOptions) {
         const data: PrepareData = {
@@ -22,13 +36,13 @@ export class NginxSample {
             auto_ssl: "",
             publicly_accessible: ""
         }
-      if (options) {
-        if (options.force_https_redirect) data["force_https_redirect"] = this.forceHttpsRedirection()
+        if (options) {
+            if (options.force_https_redirect) data["force_https_redirect"] = this.forceHttpsRedirection()
             if (options.has_custom_headers) data["custom_headers"] = this.WithCustomHeaders(options.custom_headers)
             if (options.websocket_support) data["websocket_support"] = this.WebSockets({ destination, path })
             if (options.allow_caching) data["allow_caching"] = this.AllowCaching()
             if (options.block_exploits) data["block_exploits"] = this.BlockExploits()
-      }
+        }
         return `
             server {
                     listen 80;
@@ -109,7 +123,7 @@ export class NginxSample {
         `
     }
 
-    static ReactHTMLApplication(server_name: string[], path:string) {
+    static ReactHTMLApplication(server_name: string[], path: string) {
         return `
         server {
                 listen 80;
@@ -126,7 +140,7 @@ export class NginxSample {
         }
         `
     }
-    static ReactServeApplication(server_name: string[], path:string) {
+    static ReactServeApplication(server_name: string[], path: string) {
         return `
         server {
                 listen 80;
@@ -187,7 +201,7 @@ export class NginxSample {
     }
     static NextSSRApplication() { }
     static WithSocketSupport() { }
-    static WithCustomHeaders(headers: Record<string, string>|CustomHeader[]) {
+    static WithCustomHeaders(headers: Record<string, string> | CustomHeader[]) {
         let headersString = ''
         for (const key in headers) {
             headersString += `proxy_set_header ${key} ${headers[key as keyof typeof headers]} \n`
@@ -196,7 +210,7 @@ export class NginxSample {
         return headersString
     }
     static WithCacheSupport() { }
-    static ErrorPages() { }
+
     static Redirection() {
         return ``
     }
@@ -324,10 +338,10 @@ export class NginxSample {
     static WebSockets({
         path = "/socket.io/",
         destination
-    }:{
-        path:string,
-        destination:string
- 
+    }: {
+        path: string,
+        destination: string
+
     }) {
         return `
          
