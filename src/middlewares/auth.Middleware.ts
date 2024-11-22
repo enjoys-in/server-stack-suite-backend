@@ -20,7 +20,8 @@ export class JwtAuth {
     static validateUser(req: Request, res: Response, next: NextFunction) {
         try {
         
-            const routeHandler = RouteResolver.mappedRoutes.find((layer:any) => layer.path === req.originalUrl)?.handler;            
+            const routeHandler = RouteResolver.mappedRoutes.find((layer:any) => layer.path === req.originalUrl)?.handler;    
+                  
             const isPublicRoute = routeHandler && Reflect.getMetadata(PUBLIC_ROUTE_KEY, routeHandler);       
          
             if (isPublicRoute) {

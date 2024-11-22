@@ -59,7 +59,7 @@ export class RouteResolver {
     }
 
     static Mapper(AppServer: Application, options: { listEndpoints: boolean, onlyPaths?: boolean } = { listEndpoints: false, onlyPaths: false }) {
-        if (options.listEndpoints) {
+     
             this.prototype.getEndpoints(AppServer).forEach((endpoint, key, arr) => {
                 SetAppRoutes.set(endpoint.path, endpoint.methods)
                 const str = `${endpoint.methods.includes('GET') ? bold(bgWhite(gray('GET')))
@@ -72,10 +72,9 @@ export class RouteResolver {
                                             : endpoint.methods.includes('HEAD') ? bold(bgWhite(blackBright('HEAD')))
                                                 :  bold(yellow(endpoint.methods.join(', ')))} ${options.onlyPaths ? "-": blueBright(endpoint.middlewares.join())} ${yellow(endpoint.path)}`
 
-                Logging.dev(str);
+                                                if (options.listEndpoints)   Logging.dev(str);
             });
-
-        }
+ 
 
         // AppServer._router.stack.forEach(this.print.bind([]))
     }

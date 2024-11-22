@@ -1,4 +1,5 @@
 import { join } from "path"
+export const DEPLOYMENT_DIR ="/deployments"
 export const CRUD = {
     CREATE: {
         DIR: "sudo mkdir {path}",

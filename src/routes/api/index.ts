@@ -1,6 +1,6 @@
 import { Router } from "express";
 import AppIntegrationRoutes from "./intergration";
-import { UserAuthController ,HostController ,BaseController,FirewallPortsController,SslCertificatesController} from "@/handlers/controllers";
+import { UserAuthController ,HostController ,BaseController,FirewallPortsController,SslCertificatesController, ProjectController, ApplicationController} from "@/handlers/controllers";
 import { ReqValidator,HostValidator,ErrroPageValidator } from "@/utils/validators/Request.validator";
 import { Validator } from "@/middlewares/validator.middleware";
 import { JwtAuth } from "@/middlewares/auth.Middleware";
@@ -54,5 +54,23 @@ router.get("/:server_name/hosts/error-page", HostController.default.getAllErrorP
 router.get("/:server_name/hosts/error-page/:id", HostController.default.getOneErrorPage)
 router.delete("/:server_name/hosts/error-page/:id", HostController.default.deleteErrorPage)
 router.put("/:server_name/hosts/error-page/:id", HostController.default.updateErrorPage) 
+
+//  Project Route
+router.get("/projects", ProjectController.default.allProject)
+router.post("/create-project", ProjectController.default.createNewProject)
+router.get("/project/:id", ProjectController.default.getSingleProject)
+router.delete("/project/:id", ProjectController.default.deleteProject)
+
+// Application Deploy Rouetes
+router.get("/applications/:id", HostController.default.AddNewErrorPage)
+router.post("/applications", ApplicationController.default.deployNewApplication)
+router.put("/applications/:id", ApplicationController.default.updateApplicationMetadata)
+router.delete("/applications/:id", ApplicationController.default.deleteApplication)
+
+router.get("/deployments/:id", HostController.default.AddNewErrorPage)
+router.get("/deployments/logs/:application_id", HostController.default.AddNewErrorPage)
+// router.get("/rollback-deployment/:application_id/:deployment_id", AddNewErrorPage)
+
+// Webhook Rouetes
 
 export default router

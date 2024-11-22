@@ -3,15 +3,34 @@ import { UserEntity } from "@/factory/entities/users.entity";
 import { InjectRepository } from "@/factory/typeorm";
 import utils from "@/utils";
 import { PublicRoute } from "@/utils/decorators";
+import helpers from "@/utils/helpers";
+import { USER_STATUS } from "@/utils/interfaces/user.interface";
 import type { Request, Response } from "express";
 
 import moment from "moment";
 
 
-
 class AuthController {
 
+    async onAppStart() {
+        const isUser = await InjectRepository(UserEntity).findOne({
+            where: {
+                username: 'admin',
+            }
+        })
+        if (isUser) return
+        const password = "Admin@123"
+        await InjectRepository(UserEntity).save({
+            username: 'admin',
+            password: await utils.HashPassword(password),
+            email: 'admin@admin.com',
+            name: 'Admin',
+            status: USER_STATUS.ACTIVE,
+            isfirstlogin: true,
 
+        })
+
+    }
     @PublicRoute()
     async Login(req: Request, res: Response) {
         try {
@@ -29,6 +48,7 @@ class AuthController {
             const token = utils.signJWT({
                 uid: isUser.id,
                 email: isUser.email,
+                name: helpers.purifyString(isUser.name),
                 isFirstLogin: isUser.isfirstlogin
             }, "web")
             const cookieExpiration = moment(new Date()).add(CONFIG.SECRETS.JWT_SECRET_EXPIRATION, "days").toDate()
@@ -91,6 +111,16 @@ class AuthController {
 
     async UpdatePassword(req: Request, res: Response) {
         try {
+            const user = await InjectRepository(UserEntity).findOne(req.user.id)
+            if (!user) {
+                throw new Error('User not found')
+            }
+            if (!utils.ComparePassword(user.password, req.body.old_password)) {
+                throw new Error('Invalid old password')
+            }
+            const newPassword = await utils.HashPassword(req.body.new_password)
+
+            await InjectRepository(UserEntity).update(req.user.id, { password: newPassword })
             res.json({ message: "OK", result: null, success: true });
 
         } catch (error) {

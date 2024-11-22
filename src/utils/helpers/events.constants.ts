@@ -14,6 +14,11 @@ export const EVENT_CONSTANTS = {
         WARN:"log::WARN",        
     },
     SERVER_COMMAND:"RUN::SERVER_COMMAND",
-    RUN_COMMAND:"RUN::COMMAND"
-     
+    RUN_COMMAND:"RUN::COMMAND",
+    
+    DEPLOYMENT:{
+        COMPLETED:"deployment::completed",
+        STARTED:"deployment::started",
+        FAILED:"deployment::failed",
+    }
 }

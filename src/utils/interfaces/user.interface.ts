@@ -2,6 +2,7 @@ import { JwtPayload } from "jsonwebtoken";
  
 interface User {
     uid: number;
+    name: string;   
     email: string;   
 }
 export type IUser = User & JwtPayload

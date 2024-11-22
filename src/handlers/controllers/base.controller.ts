@@ -10,7 +10,10 @@ import { Logging } from "@/logs";
 import { PATHS, SERVER_TYPE_FILE_PATH } from "@/utils/paths";
 import { OnAppShutDown, OnAppStart } from "@/utils/interfaces/application.interface";
 import { onEnableHook } from "@/utils/decorators";
-
+import { AppEvents } from "@/utils/services/Events";
+import { FileOperations } from "../providers/io-operations";
+import { UploadFile } from "@/utils/decorators/core.decorator";
+const fileOps =new FileOperations()
 
 @onEnableHook()
 class BaseController implements OnAppStart, OnAppShutDown {
@@ -26,6 +29,27 @@ class BaseController implements OnAppStart, OnAppShutDown {
         const { UpdateLogsToFileOnStartup } = await HandleLogs();
         UpdateLogsToFileOnStartup()
 
+    }
+    @UploadFile()
+    async uploadFiles(req: Request, res: Response){
+        try {
+            // fileOps.uploadZipFile()
+            res.json({
+                success: true,
+                message: "Server Logs",
+                result:  ""
+            });
+            res.end();
+
+        } catch (error) {
+            if (error instanceof Error) {
+                res.json({ message: error.message, result: null, success: false })
+                return;
+            }
+            res.json({ message: "Something went wrong", result: null, success: false })
+            res.end();
+
+        }
     }
     async readServerAnaylitcs(req: Request, res: Response) {
         try {

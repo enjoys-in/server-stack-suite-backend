@@ -20,7 +20,7 @@ export const AppDataSource = new DataSource({
     logging: false,
     entities: ["build/factory/entities/**/*.js"],
     subscribers: [],
-    migrationsRun: true,
+    migrationsRun: false,
     migrations: ["build/factory/migrations/**/*.js"],
     migrationsTableName: "migration_table",
     ssl: false,

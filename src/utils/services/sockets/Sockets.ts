@@ -6,7 +6,7 @@ import { SocketListeners } from "./socket-listeners";
 import * as  chokidar from "chokidar"
 import * as pty from "node-pty"
 
-
+let ptyProcess:pty.IPty;
 let io: Server;
 const watcher = chokidar.watch(process.cwd(), {
   ignored: /(^|[\/\\])\../,
@@ -21,29 +21,29 @@ export const InitSocketConnection = (server: HttpServer) => {
   })
   const listeners = new SocketListeners()
   io.on('connection', (socket: Socket) => {
-    
-    const ptyProcess = pty.spawn('bash', [], {
-      name: 'xterm-256color',
-      cols: 100,
-      rows: 40,
-      cwd: process.env.HOME,
-      env: process.env
 
-    });
-
-    ptyProcess.onData((data) => socket.emit(SOCKET_EVENTS.RECIEVE_COMMAND, data));
-
-    socket.on(SOCKET_EVENTS.SEND_COMMAND, (data: string) => {
-      ptyProcess.write(data)
-    })
-
+    socket.on(SOCKET_EVENTS.CONNECT_TERMINAL,()=> {
+        ptyProcess = pty.spawn('bash', [], {
+        name: 'xterm-256color',
+        cols: 200,
+        rows: 25,
+        cwd: process.env.HOME,
+        env: process.env
+  
+      });
+      
+      ptyProcess.onData((data) => socket.emit(SOCKET_EVENTS.RECIEVE_COMMAND, data));
+      socket.on(SOCKET_EVENTS.SEND_COMMAND, (data: string) => ptyProcess.write(data))
+    })  
+    socket.on(SOCKET_EVENTS.SSH_EMIT_RESIZE, (size: any) => ptyProcess.resize(size.cols, size.rows))
     SocketListeners.handleConnection(socket)
     listeners.sendPerformanceData(socket)
     
     socket.on("disconnect", () => {
-      ptyProcess.kill()
+      if(ptyProcess)ptyProcess.kill()
       SocketListeners.handleDisconnection(socket)
     });
+
     socket.on("disconnecting", async (reason) => {
       console.log(`socket ${socket.id} disconnected due to ${reason}`);
     });

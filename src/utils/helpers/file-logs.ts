@@ -1,4 +1,5 @@
 import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFile, writeFileSync } from 'fs';
+import moment from 'moment';
 import { join } from 'path';
 
 const LOG_DIR = join(process.cwd(), "logs")
@@ -26,7 +27,7 @@ const formatTimestamp = (date: Date) => {
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const seconds = String(date.getSeconds()).padStart(2, '0');
-  return `${hours}:${minutes}:${seconds}`;
+  return `${hours}:${minutes}:${seconds} `;
 };
 export async function HandleLogs() {
   const now = new Date();
@@ -38,7 +39,7 @@ export async function HandleLogs() {
   const UpdateLogsToFileOnStartup = () => {
     const data = readFileSync(logPath, "utf8")
     SAVE_LOGS.set("log", data)
- 
+
     return
   }
   const UpdateLogsToFileOnShutDown = () => {
@@ -47,7 +48,7 @@ export async function HandleLogs() {
       InitLogs(data, LogLevel.INFO, true)
     }
   }
- 
+
   return {
     UpdateLogsToFileOnStartup, UpdateLogsToFileOnShutDown, path: logPath
   }
@@ -56,8 +57,7 @@ export async function HandleLogs() {
 export const InitLogs = (message: string, level: LogLevelKey = "INFO", saveToFile: boolean = true): void => {
   const now = new Date();
   const date = formatDate(now);
-  const timestamp = formatTimestamp(now);
-
+  const timestamp = moment(now).format('YYYY-MM-DD hh:mm:ss A')
   // Ensure the logs directory exists
   if (!existsSync(LOG_DIR)) {
     mkdirSync(LOG_DIR, { recursive: true });
@@ -70,6 +70,6 @@ export const InitLogs = (message: string, level: LogLevelKey = "INFO", saveToFil
   const logEntry = `[${timestamp}] [${level}] ${message}\n`;
 
   appendFileSync(logFile, logEntry, 'utf8');
-  
+
 };
 

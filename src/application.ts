@@ -21,7 +21,7 @@ import { AppLifecycleManager } from '@app/modules/appLifecycle';
 import { AppEvents } from './utils/services/Events';
 import { Modifiers } from './app/common/Modifiers';
 import cors from 'cors'
-
+import { EventsListeners } from './utils/services/events-listeners';
 
 
 class AppServer {
@@ -104,9 +104,9 @@ class AppServer {
      */
     private RegisterRoutes(): void {
         Logging.dev("Registering Routes")
-        
+
         AppServer.App.use(AppRoutes);
-        RouteResolver.Mapper(AppServer.App, { listEndpoints: false,onlyPaths:false });
+        RouteResolver.Mapper(AppServer.App, { listEndpoints: false, onlyPaths: false });
     }
     /**
      * ExceptionHandler function.
@@ -125,12 +125,15 @@ class AppServer {
 
     }
     private InitServer() {
-       
+
         const server = http.createServer(AppServer.App).listen(AppServer.PORT, () => {
-            AppEvents.emit('ready')            
+            AppEvents.emit('ready')
             console.log(blue(`Application Started Successfully on ${CONFIG.APP.APP_URL}`),)
         })
-        InitSocketConnection(server) 
+        const io = InitSocketConnection(server)
+        // Register Event handlers
+        new EventsListeners(io)
+
         server.on('close', () => {
             AppEvents.emit('shutdown')
             this.CloseServer(server)
@@ -156,7 +159,12 @@ class AppServer {
         try {
             //  Using InjectRepository Decorator first Db Connection must be initialized otherwise it will throw error that {repository} is undefined
             CreateConnection()
-                .then(() => this.InitServer())
+                .then(async () => {
+                    this.InitServer()
+
+                }
+
+                )
                 .catch(error => {
                     Logging.dev(error)
                     process.exit(1)
@@ -176,14 +184,14 @@ class AppServer {
      */
     private GracefulShutdown(): void {
         process.on('SIGINT', () => {
-            AppLifecycleManager.destroyModules();             
+            AppLifecycleManager.destroyModules();
             AppEvents.emit('shutdown')
             Logging.dev("Manually Shutting Down", "notice")
             process.exit(1);
         })
         process.on('SIGTERM', () => {
             AppLifecycleManager.destroyModules();
-           
+
             AppEvents.emit('shutdown')
             Logging.dev("Error Occured", "error")
             process.exit(1);

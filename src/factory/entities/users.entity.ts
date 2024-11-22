@@ -4,6 +4,7 @@ import { CommonEntity } from './common';
 import { HostsEnitity } from './hosts.entity';
 import { USER_STATUS } from '@/utils/helpers/constants';
 import { DASHBOAD_CONFIG } from '@/utils/interfaces/user.interface';
+import { ProjectsEnitity } from './project.entity';
 
 
 
@@ -40,6 +41,10 @@ export class UserEntity extends CommonEntity {
 
     @OneToMany(() => HostsEnitity, (hosts) => hosts.user, { nullable: true, cascade: ["insert"], onDelete: "CASCADE", onUpdate: "NO ACTION" })
     hosts!: HostsEnitity[]
+
+    @OneToMany(() => ProjectsEnitity, (projects) => projects.created_by, { nullable: true, cascade: ["insert"], onDelete: "CASCADE", onUpdate: "NO ACTION" })
+    project!: ProjectsEnitity[]
+    
 
 
 }

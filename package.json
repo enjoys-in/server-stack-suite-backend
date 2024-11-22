@@ -20,7 +20,6 @@
   "license": "ISC",
   "dependencies": {
     "@enjoys/exception": "^1.1.2",
-    "@nestjs/cli": "^10.4.5",
     "@swc/cli": "^0.4.1-nightly.20240914",
     "@swc/core": "^1.7.36",
     "@swc/helpers": "^0.5.13",
@@ -68,10 +67,12 @@
     "tsconfig-paths": "^4.2.0",
     "typeorm": "^0.3.19",
     "typescript": "^5.6.3",
+    "unzipper": "^0.12.3",
     "validator": "^13.11.0",
     "winston": "^3.11.0"
   },
   "devDependencies": {
+    "@nestjs/cli": "^10.4.7",
     "@types/bcrypt": "^5.0.2",
     "@types/bcryptjs": "^2.4.2",
     "@types/body-parser": "^1.19.2",
@@ -91,6 +92,7 @@
     "@types/nodemailer": "^6.4.16",
     "@types/nodemailer-express-handlebars": "^4.0.2",
     "@types/ssh2-sftp-client": "^9.0.4",
+    "@types/unzipper": "^0.10.10",
     "node-cron": "^3.0.3",
     "ts-node": "^10.9.2"
   }

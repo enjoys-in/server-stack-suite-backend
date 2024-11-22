@@ -1,4 +1,4 @@
-const APP_PORT = Number(process.env.APP_PORT) || 7134
+const APP_PORT = Number(process.env.APP_PORT) || 7654
 const APP_ENV = String(process.env.APP_ENV) || "DEV"
 const APP_DOMAIN = String(process.env.APP_DOMAIN) || "localhost"
 const __config = {
