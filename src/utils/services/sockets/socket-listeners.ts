@@ -9,7 +9,7 @@ const func = new CustomFunctions()
 
 export class SocketListeners {
    static handleConnection(socket: socket.Socket) {
-      console.log(`Socket : ${socket.id}`);
+  
       socket.on(SOCKET_EVENTS.START_SERVER, (data) => {
          const startServerCmd = SERVER_COMMANDS[data as keyof typeof SERVER_COMMANDS].START_SERVER
          AppEvents.emit(EVENT_CONSTANTS.RUN_COMMAND, startServerCmd)

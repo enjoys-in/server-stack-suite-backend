@@ -1,12 +1,15 @@
 import { WebhookEntity } from "@/factory/entities/webhook.entity";
+import { InjectRepository } from "@/factory/typeorm";
 import axios from "axios";
-import { Repository } from "typeorm";
-
+const webhookRepository = InjectRepository(WebhookEntity)
 export class WebhookService {
-  constructor(private webhookRepository: Repository<WebhookEntity>) {}
+  constructor() { }
 
   async triggerWebhook(applicationId: number, event: string, payload: any): Promise<void> {
-    const webhooks = await this.webhookRepository.find({ where: { applicationId, event } });
+    const webhooks = await webhookRepository.find({ where: { applicationId, event } });
+    if (webhooks.length === 0) {
+      return
+    }
     for (const webhook of webhooks) {
       try {
         await axios.post(webhook.url, payload);

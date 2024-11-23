@@ -7,13 +7,13 @@ export class DeploymentLogEntity extends CommonEntity {
   @Column()
   application!: number;
 
-  @Column({ enum: ApplicationDeploymentStatus })
-  status!: string
-
+  @Column({ enum: ApplicationDeploymentStatus,default:ApplicationDeploymentStatus.PROVISIONING })
+  status!: string 
+  
   @Column("text")
   logs!: string;  
 
-  @Column("jsonb")
+  @Column("jsonb",{nullable:true})
   metadata!: any; 
 
   @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })

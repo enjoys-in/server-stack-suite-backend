@@ -1,5 +1,5 @@
 import { PartialType } from "@/utils/interfaces";
-import { ApplicationDeployment, Commands, EnvironmentVariable, Path } from "@/utils/interfaces/deployment.interface";
+import { ApplicationDeployment, Commands, EnvironmentVariable, Path,DockerMetadata } from "@/utils/interfaces/deployment.interface";
 
 export class CreateApplicaionDTO implements ApplicationDeployment {
     project_id!: string;
@@ -9,7 +9,8 @@ export class CreateApplicaionDTO implements ApplicationDeployment {
     framework_preset!: string;
     selected_domain!: string;
     reverse_proxy!: string;
-    useDockerFile!: string;
+    useDockerfile!: string;
+    docker_metadata!: DockerMetadata;
     environment_variables!: EnvironmentVariable[];
     path!: Path;
     commands!: Commands;

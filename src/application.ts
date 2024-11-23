@@ -1,12 +1,12 @@
 import * as http from 'http'
-import express, { Application, NextFunction, Response, Request } from 'express'
+import { getSocketIo } from '@/utils/services/sockets/Sockets';
+import express, { Application,} from 'express'
 import morgan from 'morgan'
 import helmet from 'helmet';
 import { Logging } from '@/logs';
 import bodyParser from 'body-parser';
 import { blue } from 'colorette';
 import { CONFIG } from './app/config';
-import { Cors } from '@/app/common/Cors';
 import cookieParser from 'cookie-parser'
 import AppRoutes from '@/routes/web';
 import { useHttpsRedirection } from '@/app/common/HttpsRedirection'
@@ -15,13 +15,13 @@ import { SessionHandler } from '@/app/common/Session';
 import { Interceptor } from '@/app/common/Interceptors'
 import { RouteResolver } from '@/app/common/RouteResolver';
 import { AppMiddlewares } from '@/middlewares/app.middleware';
-import { InitSocketConnection } from '@/utils/services/sockets/Sockets';
 import { CreateConnection } from '@factory/typeorm'
 import { AppLifecycleManager } from '@app/modules/appLifecycle';
 import { AppEvents } from './utils/services/Events';
 import { Modifiers } from './app/common/Modifiers';
 import cors from 'cors'
 import { EventsListeners } from './utils/services/events-listeners';
+const io = getSocketIo()
 
 
 class AppServer {
@@ -61,9 +61,12 @@ class AppServer {
         }));
         AppServer.App.use(bodyParser.json());
         AppServer.App.use(useHttpsRedirection);
+        AppServer.App.use(AppMiddlewares.attachIotoRequestHandler(io));
         AppServer.App.use(SessionHandler.forRoot());
         AppServer.App.use(cookieParser(CONFIG.SECRETS.SESSION_SECRET));
         AppServer.App.use(bodyParser.urlencoded({ extended: false }));
+       
+        
     }
     /**
      * Initializes the middlewares for the application.
@@ -75,8 +78,9 @@ class AppServer {
     private InitMiddlewares(): void {
         Logging.dev("Middlewares Initiated")
         /** Enable Request headers for production */
+        AppServer.App.use(AppMiddlewares.IRequestHeaders())
         if (CONFIG.APP.APP_ENV.toUpperCase() === 'PRODUCTION' || CONFIG.APP.APP_ENV.toUpperCase() === 'PROD') {
-            AppServer.App.use(AppMiddlewares.IRequestHeaders())
+         
             AppServer.App.use(AppMiddlewares.isApiProtected())
         }
         /** Enable Signature header validation on api routes */
@@ -130,8 +134,9 @@ class AppServer {
             AppEvents.emit('ready')
             console.log(blue(`Application Started Successfully on ${CONFIG.APP.APP_URL}`),)
         })
-        const io = InitSocketConnection(server)
+        io.attach(server)
         // Register Event handlers
+       
         new EventsListeners(io)
 
         server.on('close', () => {

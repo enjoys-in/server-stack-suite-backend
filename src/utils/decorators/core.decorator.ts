@@ -5,38 +5,11 @@ import type { NextFunction, Request, Response } from 'express';
 import { FileHandler, FileUploadOptions } from '../interfaces/fileupload.interface';
 import { validationResult } from 'express-validator';
 import { Logging } from '@/logs';
-import { CacheService } from '@utils/services/redis/cacheService';
 import { HttpStatusCode } from '../interfaces/httpCode.interface';
 import helpers from '../helpers';
-const cacheClient = new CacheService()
+ 
 
-/**
- * A decorator that adds caching functionality to a method.
- *
- * @param {Object} options - The options for the cache decorator.
- * @param {number} options.ttl - The time-to-live (TTL) for the cached result in seconds. Defaults to 60 seconds.
- * @param {string} options.cacheKey - The custom cache key. If not provided, a default cache key will be generated based on the class name and method name.
- * @return {Function} - The decorated function.
- */
-export function Cache({ ttl = 60, cacheKey }: { ttl?: number, cacheKey?: string } = {}) {
-    return function (target: any, propertyKey: any, descriptor: PropertyDescriptor) {
-        const originalMethod = descriptor.value;
-        const key = cacheKey || `${target.constructor.name}::${propertyKey}`;
-        descriptor.value = async function (...args: any[]) {
-            console.log(await cacheClient.cache.get("key"))
-            const cachedResult = await cacheClient.cache.get(key)
-            if (cachedResult) {
-                return JSON.parse(cachedResult);
-            }
-            return originalMethod.apply(this, args).then((result: any) => {
-                cacheClient.cache.set(key, JSON.stringify(result), { EX: ttl });
-                return result;
-            })
-        };
-
-        return descriptor;
-    };
-}
+ 
 /**
  * Redirects the user to the specified URL.
  *

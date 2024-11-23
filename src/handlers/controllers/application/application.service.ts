@@ -13,7 +13,7 @@ class ApplicationService {
              framework_preset: data.framework_preset,
              selected_domain: data.selected_domain,
              reverse_proxy: data.reverse_proxy,
-             useDockerFile: data.useDockerFile,
+             useDockerFile: data.useDockerfile,
              environment_variables: data.environment_variables,
              path: data.path,
              commands: data.commands,
@@ -31,7 +31,7 @@ class ApplicationService {
         return appRepository.findOne({ where:{id}  })
     }
     updateApplicationMetadata(id:number, metadata: UpdateApplicaionDTO) {
-        return appRepository.update({id}, metadata)
+        return appRepository.update({id}, {...metadata,useDockerfile:Boolean(metadata.useDockerfile)})
     }
     deleteApplication(id:number) {
         return appRepository.delete({id})

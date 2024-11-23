@@ -1,9 +1,8 @@
 import { Logging } from "@/logs";
-import Helpers, { SetAppRoutes } from "@/utils/helpers";
-import { Security } from "@/utils/helpers/security";
+import Helpers from "@/utils/helpers";
 import { Request, Response, NextFunction } from "express";
+import { Server } from "socket.io";
 
-const sigHeaderName = "X-Signature";
 export class AppMiddlewares {
   static setHeaders(req: Request, res: Response, next: NextFunction) {
     res.setHeader('Content-Type', 'application/json');
@@ -15,7 +14,12 @@ export class AppMiddlewares {
 
     next();
   }
-
+ static attachIotoRequestHandler(io:Server){
+  return (req: Request, res: Response, next: NextFunction) =>{
+    req.io= io
+    next();
+   }
+ }
   /**
    * Middleware to protect API routes.
    * 

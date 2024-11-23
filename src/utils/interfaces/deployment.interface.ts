@@ -6,7 +6,8 @@ export interface ApplicationDeployment{
   framework_preset: string
   selected_domain: string
   reverse_proxy: string
-  useDockerFile: string
+  docker_metadata: DockerMetadata
+  useDockerfile: string
   environment_variables: EnvironmentVariable[]
   path: Path
   commands: Commands
@@ -18,6 +19,12 @@ export interface ApplicationDeployment{
 export interface EnvironmentVariable {
   key: string
   value: string
+}
+export interface DockerMetadata {
+  ports:string[]
+  tag?:string
+  dockerfilePath?:string
+
 }
 
 export interface Path {
@@ -37,9 +44,36 @@ export interface Commands {
     BUILDING = "BUILDING",
     DEPLOYING = "DEPLOYING",
     FAILED = "FAILED",
-    SUCCEEDED = "SUCCEEDED",
+    ACTIVE = "ACTIVE",
     RUNNING = "RUNNING",
     TERMINATING = "TERMINATING",
     TERMINATED = "TERMINATED",
     POWER_OFF = "POWER_OFF",
   }
+  export enum WebhookStatus {
+    PROVISIONING = "application:provisioning",
+    BUILDING = "application:building",
+    DEPLOYING = "application:deploying",  
+    READY = "application:ready",
+    FAILED = "application:failed",
+    DELETED = "application:deleted",
+    RESOLVED = "application:resolved",
+    UPDATED = "application:updated",
+    STARTED = "application:started",
+    STOPPED = "application:stopped",  
+    TERMINATED = "application:terminated",
+    POWER_OFF = "application:power_off",
+  }
+  export interface DeploymentOptions {
+    type: "nixpack" | "docker" | "zip";
+    appName: string;
+    repoUrl?: string; // Required for nixpack or docker
+    dockerfilePath?: string; // Required for docker
+    zipFilePath?: string; // Required for zip
+    buildCommand?: string; // Optional build command for nixpack
+    startCommand: string; // Start command for all methods
+}
+export interface DeploymentResult {
+    success: boolean;
+    message: string;
+}

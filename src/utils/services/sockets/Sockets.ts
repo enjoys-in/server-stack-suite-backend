@@ -6,41 +6,43 @@ import { SocketListeners } from "./socket-listeners";
 import * as  chokidar from "chokidar"
 import * as pty from "node-pty"
 
-let ptyProcess:pty.IPty;
+let ptyProcess: pty.IPty;
 let io: Server;
+export const USER_STORE = new Map<string, string>()
 const watcher = chokidar.watch(process.cwd(), {
   ignored: /(^|[\/\\])\../,
   persistent: true,
 });
-export const InitSocketConnection = (server: HttpServer) => {
+const InitSocketConnection = (server?: HttpServer) => {
   Logging.dev("Socket are Initialized")
-  const io = new Server(server, {
+  const io = new Server({
     cors: {
       origin: process.env.NODE_ENV === 'development' ? process.env.REACT_APP_URL : "*",
     }
   })
   const listeners = new SocketListeners()
   io.on('connection', (socket: Socket) => {
-
-    socket.on(SOCKET_EVENTS.CONNECT_TERMINAL,()=> {
-        ptyProcess = pty.spawn('bash', [], {
+    console.log(`Socket : ${socket.id}`);
+    socket.on("add_user", (data: { user_id: string }) => {
+      USER_STORE.set(String(data.user_id), socket.id)
+    });
+    socket.on(SOCKET_EVENTS.CONNECT_TERMINAL, () => {
+      ptyProcess = pty.spawn('bash', [], {
         name: 'xterm-256color',
         cols: 200,
         rows: 25,
         cwd: process.env.HOME,
         env: process.env
-  
       });
-      
       ptyProcess.onData((data) => socket.emit(SOCKET_EVENTS.RECIEVE_COMMAND, data));
       socket.on(SOCKET_EVENTS.SEND_COMMAND, (data: string) => ptyProcess.write(data))
-    })  
+    })
     socket.on(SOCKET_EVENTS.SSH_EMIT_RESIZE, (size: any) => ptyProcess.resize(size.cols, size.rows))
     SocketListeners.handleConnection(socket)
     listeners.sendPerformanceData(socket)
-    
+
     socket.on("disconnect", () => {
-      if(ptyProcess)ptyProcess.kill()
+      if (ptyProcess) ptyProcess.kill()
       SocketListeners.handleDisconnection(socket)
     });
 
@@ -54,10 +56,7 @@ export const InitSocketConnection = (server: HttpServer) => {
 
   return io
 };
-export const getSocketIo = () => {
-  if (!io) {
-    throw new Error("Socket.io not initialized!");
-  }
-  return io;
-};
+io = InitSocketConnection()
+
+export const getSocketIo = () => io
 

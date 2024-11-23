@@ -1,8 +1,11 @@
 import type { Request, Response } from "express";
 import applicationService from "./application.service";
+import deploymentService from "./deployment.service";
 import { ApplicationDeployment } from "@/utils/interfaces/deployment.interface";
 import { AppEvents } from "@/utils/services/Events";
 import { EVENT_CONSTANTS } from "@/utils/helpers/events.constants";
+import { OnEvent } from "@/utils/decorators";
+import { USER_STORE } from "@/utils/services/sockets/Sockets";
 
 
 class ApplicationController {
@@ -54,20 +57,17 @@ class ApplicationController {
       res.json({ message: "Something went wrong", result: null, success: false })
     }
   }
+ 
   async deployNewApplication(req: Request, res: Response) {
     try {
-      const body = req.body as ApplicationDeployment    
-     const appIntance =  await applicationService.createNewApplication(body)   
+      const body = req.body as ApplicationDeployment
+      const socketId = await USER_STORE.get(String(req.user?.uid))
+      const appIntance = await applicationService.createNewApplication(body)
 
-      res.json({ success: true, message: "Deployment initiated.",result:{application_id:appIntance.id} })
-      
-      if (appIntance.id) {      
-        AppEvents.emit(EVENT_CONSTANTS.DEPLOYMENT.STARTED,JSON.stringify({
-         application_id:appIntance.id,
-         ...body
-        }))
-        
-       
+      res.json({ success: true, message: "Deployment initiated.", result: { application_id:appIntance.id } })
+
+      if (appIntance.id) {
+        AppEvents.emit(EVENT_CONSTANTS.DEPLOYMENT.STARTED, { application_id: "appIntance.id", socketId })
       }
       res.end()
     } catch (error: any) {
@@ -79,17 +79,22 @@ class ApplicationController {
     }
   }
 
-  async deployGit(req: Request, res: Response) {
+  async rollbackApplication(req: Request, res: Response) {
     try {
-      const { appName, repoUrl, type, startCommand } = req.body;
+      const body = req.body as ApplicationDeployment
+      const appIntance = await applicationService.createNewApplication(body)
 
-      if (!appName || !repoUrl || !type || !startCommand) {
-        return res.status(400).json({ error: "Invalid request payload." });
+      res.json({ success: true, message: "Deployment initiated.", result: { application_id: appIntance.id } })
+
+      if (appIntance.id) {
+        AppEvents.emit(EVENT_CONSTANTS.DEPLOYMENT.STARTED, JSON.stringify({
+          application_id: appIntance.id,
+          ...body
+        }))
+
+
       }
-
-      const socketId = req.headers["socket-id"] as string;
-      // await this.deploymentService.deployFromGit(repoUrl, type, appName, startCommand, socketId);
-      res.json({ success: true, message: "Deployment initiated." });
+      res.end()
     } catch (error: any) {
       if (error instanceof Error) {
         res.json({ message: error.message, result: null, success: false })
@@ -97,6 +102,26 @@ class ApplicationController {
       }
       res.json({ message: "Something went wrong", result: null, success: false })
     }
+  }
+  async test(req: Request, res: Response) {
+    try {
+      const body = req.body as  { application_id:string, socketId:string }
+      deploymentService.deployApplication(Number(body.application_id),body.socketId)
+
+      res.json({ success: true, message: "Deployment initiated.", result:  {} }).end()
+    } catch (error: any) {
+      if (error instanceof Error) {
+        res.json({ message: error.message, result: null, success: false })
+        return;
+      }
+      res.json({ message: "Something went wrong", result: null, success: false })
+    }
+  }
+  @OnEvent(EVENT_CONSTANTS.DEPLOYMENT.STARTED,{
+    async:true,
+  })
+  private async deploymentStarted(payload: { application_id:string, socketId:string }) {   
+    deploymentService.deployApplication(Number(payload.application_id),payload.socketId)
   }
 }
 

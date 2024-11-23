@@ -62,10 +62,11 @@ router.get("/project/:id", ProjectController.default.getSingleProject)
 router.delete("/project/:id", ProjectController.default.deleteProject)
 
 // Application Deploy Rouetes
-router.get("/applications/:id", HostController.default.AddNewErrorPage)
-router.post("/applications", ApplicationController.default.deployNewApplication)
-router.put("/applications/:id", ApplicationController.default.updateApplicationMetadata)
-router.delete("/applications/:id", ApplicationController.default.deleteApplication)
+router.get("/application/:id", HostController.default.AddNewErrorPage)
+router.post("/application", ApplicationController.default.deployNewApplication)
+router.put("/application/:id", ApplicationController.default.updateApplicationMetadata)
+router.delete("/application/:id", ApplicationController.default.deleteApplication)
+router.post("/application/test", ApplicationController.default.test)
 
 router.get("/deployments/:id", HostController.default.AddNewErrorPage)
 router.get("/deployments/logs/:application_id", HostController.default.AddNewErrorPage)

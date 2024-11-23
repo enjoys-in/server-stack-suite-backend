@@ -44,17 +44,18 @@ class AuthController {
             if (!utils.ComparePassword(isUser.password, password)) {
                 throw new Error('Invalid credentials')
             }
-
-            const token = utils.signJWT({
+             const user = {
                 uid: isUser.id,
                 email: isUser.email,
                 name: helpers.purifyString(isUser.name),
                 isFirstLogin: isUser.isfirstlogin
-            }, "web")
+            }
+            const token = utils.signJWT(user, "web")
             const cookieExpiration = moment(new Date()).add(CONFIG.SECRETS.JWT_SECRET_EXPIRATION, "days").toDate()
             res.cookie('access_token', token, { httpOnly: true, secure: CONFIG.APP.IS_PROD, expires: cookieExpiration });
             res.json({
                 message: "OK", result: {
+                    user,
                     access_token: token,
                     type: "Bearer",
                     expires_at: CONFIG.SECRETS.JWT_SECRET_EXPIRATION
@@ -111,7 +112,7 @@ class AuthController {
 
     async UpdatePassword(req: Request, res: Response) {
         try {
-            const user = await InjectRepository(UserEntity).findOne(req.user.id)
+            const user = await InjectRepository(UserEntity).findOne(req.user?.id)
             if (!user) {
                 throw new Error('User not found')
             }
@@ -120,7 +121,7 @@ class AuthController {
             }
             const newPassword = await utils.HashPassword(req.body.new_password)
 
-            await InjectRepository(UserEntity).update(req.user.id, { password: newPassword })
+            await InjectRepository(UserEntity).update(req.user?.id, { password: newPassword })
             res.json({ message: "OK", result: null, success: true });
 
         } catch (error) {

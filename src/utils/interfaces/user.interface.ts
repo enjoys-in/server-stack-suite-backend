@@ -4,6 +4,7 @@ interface User {
     uid: number;
     name: string;   
     email: string;   
+    isFirstLogin: boolean;   
 }
 export type IUser = User & JwtPayload
 

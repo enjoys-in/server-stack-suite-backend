@@ -1,5 +1,4 @@
 
-import { SystemLogsEntity } from '@/factory/entities/logs.entity';
 import { Repository } from "typeorm";
 import { LOGS_LEVEL_TYPES } from '../interfaces';
 import { FileOperations } from '../../handlers/providers/io-operations';
@@ -13,15 +12,21 @@ import moment from 'moment';
 import { SOCKET_EVENTS } from '@/utils/services/sockets/socketEventConstants';
 import { SOCKET_PAYLOAD_TYPE } from '@/utils/interfaces';
 import { SERVER_COMMANDS } from '@/utils/paths';
+import { AuditLogsEnitity } from "@/factory/entities/audit_logs.entity";
 
 const fileOperations = new FileOperations()
-const logsRepo = InjectRepository(SystemLogsEntity)
+const logsRepo = InjectRepository(AuditLogsEnitity)
 export class EventsListeners { 
  constructor(private io:Server) {
   this.io = io
  }
   private insertLogsInDB({ title, log, level }: { title: string, log: string, level: LOGS_LEVEL_TYPES }) {
-    return logsRepo.save({ title, log, level })
+    return logsRepo.save({
+      title,
+      log,
+      key:level,
+     
+    })
   }
   // ERROR RELATED EVENTS LISTENERS
   @OnEvent(EVENT_CONSTANTS.LOGS.INFO, { async: true })

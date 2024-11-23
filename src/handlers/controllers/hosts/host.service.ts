@@ -6,6 +6,7 @@ import { Repository } from "typeorm"
 import { CreateErrorPageDto } from "./dto/create-host.dto"
 import { UpdateErrorPageDto, UpdateHostDto } from "./dto/update-host.dto"
 import { SERVER_TYPE, SERVER_TYPES } from "@/utils/interfaces"
+import { onEnableHook } from "@/utils/decorators"
 
 
 export type FixedServerTypeName = Uppercase<SERVER_TYPES>
@@ -13,6 +14,8 @@ export type FixedServerTypeName = Uppercase<SERVER_TYPES>
 
 const errorPagesRepository = InjectRepository(ErrorPagesEnitity)
 const hostsRepository = InjectRepository(HostsEnitity)
+
+@onEnableHook()
 export class HostsService {
 
   static async onAppStart() {

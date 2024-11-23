@@ -4,6 +4,7 @@ import { CommonEntity } from "./common";
 import { WebhookEntity } from "./webhook.entity";
 import { DeploymentLogEntity } from "./deploymentLog.entity";
 import { ProjectsEnitity } from "./project.entity";
+import { ApplicationDeploymentStatus ,DockerMetadata} from "@/utils/interfaces/deployment.interface";
 
 @Entity()
 export class ApplicationEntity extends CommonEntity {
@@ -48,8 +49,14 @@ export class ApplicationEntity extends CommonEntity {
   @Column({ default: false })
   useDockerfile!: boolean;
 
+  @Column("jsonb",{nullable:true,default:{}})
+  docker_metadata!: DockerMetadata;
+
   @Column()
   selectedRepo!: string;
+
+  @Column({ enum: ApplicationDeploymentStatus,default:ApplicationDeploymentStatus.PROVISIONING })
+  status!: string
 
   @Column({ type: "json" })
   path!: { main_directory: string; root_directory: string; output_directory: string };
