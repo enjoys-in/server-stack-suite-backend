@@ -1,19 +1,22 @@
 import { formatDate, HandleLogs } from "@/utils/helpers/file-logs";
 import type { Request, Response } from "express";
-import { existsSync,  readFileSync, writeFile, writeFileSync } from "fs";
-import { join } from "path";
+import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFile, writeFileSync } from "fs";
+import { extname, join, resolve } from "path";
 import AppService from '@handlers/providers/app.provider'
 const SERVER_CONFIG = join(process.cwd(), "./sever.config.json")
 const LOG_DIR = join(process.cwd(), "logs")
 import Client from 'ssh2-sftp-client'
 import { Logging } from "@/logs";
-import { PATHS, SERVER_TYPE_FILE_PATH } from "@/utils/paths";
+import { DEPLOYMENT_DIR, SERVER_TYPE_FILE_PATH } from "@/utils/paths";
 import { OnAppShutDown, OnAppStart } from "@/utils/interfaces/application.interface";
 import { onEnableHook } from "@/utils/decorators";
-import { AppEvents } from "@/utils/services/Events";
 import { FileOperations } from "../providers/io-operations";
-import { UploadFile } from "@/utils/decorators/core.decorator";
-const fileOps =new FileOperations()
+import { FileHandler, UploadFileBody } from "@/utils/interfaces/fileupload.interface";
+import { CustomFunctions } from "../providers/custom-functions";
+import helpers from "@/utils/helpers";
+
+const fileOps = new FileOperations()
+const func = new CustomFunctions()
 
 @onEnableHook()
 class BaseController implements OnAppStart, OnAppShutDown {
@@ -30,15 +33,59 @@ class BaseController implements OnAppStart, OnAppShutDown {
         UpdateLogsToFileOnStartup()
 
     }
-    @UploadFile()
-    async uploadFiles(req: Request, res: Response){
+
+
+    async uploadFiles(req: Request, res: Response) {
         try {
-            // fileOps.uploadZipFile()
+
+            const files = req.files?.upload_zip as FileHandler
+            if (!files) {
+                throw new Error("No files uploaded");
+            }
+            if (Array.isArray(files)) {
+                throw new Error("Multiple files are not supported");
+            }
+
+            const renameFile = helpers.purifyString(files.name)
+            const body = req.body as UploadFileBody
+            const { application_name, project_path } = body;
+            const filePath = join(project_path, application_name)
+
+
+            if (!existsSync(filePath)) {
+                mkdirSync(filePath, { recursive: true })
+            }
+            if (existsSync(join(filePath, renameFile))) {
+                unlinkSync(join(filePath, renameFile))
+            }
+            const uploadPath = `${filePath}/${renameFile}`;
+            await files.mv(uploadPath)
+            const id = helpers.Md5Checksum(Date.now().toString())
+            const key = helpers.SimpleHash()
+            const extenstion = extname(files.name)
+            const createInfo = {
+                file_id:id, key, extenstion,
+                "name": files.name,
+                "modified_name": renameFile,
+                "size": files.size,
+                "encoding": files.encoding,
+                "tempFilePath": files.tempFilePath,
+                "truncated": files.truncated,
+                "mimetype": files.mimetype,
+                "md5": files.md5,
+            }
+
+            await fileOps.extractZip(uploadPath, filePath)
+            const appType = await func.detectApplicationType(filePath)
+
             res.json({
                 success: true,
-                message: "Server Logs",
-                result:  ""
-            });
+                message: "Files Uploaded Successfully",
+                result: {
+                    fileInfo: { ...createInfo, file_path: filePath },
+                    appType
+                }
+            })
             res.end();
 
         } catch (error) {
@@ -268,22 +315,22 @@ class BaseController implements OnAppStart, OnAppShutDown {
         }
     }
 
-    async getFiles(req: Request, res: Response) {      
-          try {
+    async getFiles(req: Request, res: Response) {
+        try {
             const { type, server } = req.query as { type: string, server: string };
             if (server?.toLowerCase() !== "nginx") {
                 throw new Error("Only Ngnix server is supported")
             }
-            if(type){
+            if (type) {
                 const filePath = SERVER_TYPE_FILE_PATH[server.toUpperCase() as keyof typeof SERVER_TYPE_FILE_PATH].SITES_ENABLED_LOCATION_FILE.replace(":file_name", "")
                 const files = AppService.listFilesRecursively(String(filePath)).sort();
-                
+
                 res.json({
                     success: true,
                     message: "Files List",
-                    result:files
+                    result: files
                 }).end();
-                return 
+                return
             }
 
             const dirPath = req.query.path! || process.cwd();
@@ -378,14 +425,14 @@ class BaseController implements OnAppStart, OnAppShutDown {
                 throw new Error("Only Ngnix server is supported")
             }
             const filePath = SERVER_TYPE_FILE_PATH[server.toUpperCase() as keyof typeof SERVER_TYPE_FILE_PATH].SITES_ENABLED_LOCATION_FILE.replace(":file_name", domain_name)
-            
-             writeFile(String(filePath),  req.body.data.content,(err)=>{
-                if(err){
+
+            writeFile(String(filePath), req.body.data.content, (err) => {
+                if (err) {
                     console.error(err);
-                 return     
-                 }
-                 console.log("first")
-             });
+                    return
+                }
+                console.log("first")
+            });
 
             res.json({
                 success: true,

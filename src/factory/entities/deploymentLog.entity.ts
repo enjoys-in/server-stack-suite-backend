@@ -1,22 +1,21 @@
 import { Entity,  Column } from "typeorm";
 import { CommonEntity } from "./common";
-import { ApplicationDeploymentStatus } from "@/utils/interfaces/deployment.interface";
 
 @Entity()
 export class DeploymentLogEntity extends CommonEntity {
-  @Column()
+  @Column({})
   application!: number;
+ 
+  @Column({default:"info"})
+  level!: string;  
 
-  @Column({ enum: ApplicationDeploymentStatus,default:ApplicationDeploymentStatus.PROVISIONING })
-  status!: string 
-  
   @Column("text")
-  logs!: string;  
+  log!: string;  
 
   @Column("jsonb",{nullable:true})
   metadata!: any; 
 
-  @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
-  timestamp!: Date;
+  @Column()
+  timestamp!: string;
 
 }

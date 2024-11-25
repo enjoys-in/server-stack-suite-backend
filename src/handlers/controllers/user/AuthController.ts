@@ -132,6 +132,7 @@ class AuthController {
             res.json({ message: "Something went wrong", result: null, success: false })
         }
     }
+ 
 }
 
 export default new AuthController()

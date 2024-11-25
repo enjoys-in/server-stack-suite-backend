@@ -26,12 +26,12 @@ const InitSocketConnection = (server?: HttpServer) => {
     socket.on("add_user", (data: { user_id: string }) => {
       USER_STORE.set(String(data.user_id), socket.id)
     });
-    socket.on(SOCKET_EVENTS.CONNECT_TERMINAL, () => {
+    socket.on(SOCKET_EVENTS.CONNECT_TERMINAL, (path:string|undefined) => {
       ptyProcess = pty.spawn('bash', [], {
         name: 'xterm-256color',
-        cols: 200,
+        cols: 140,
         rows: 25,
-        cwd: process.env.HOME,
+        cwd: path||process.env.HOME,
         env: process.env
       });
       ptyProcess.onData((data) => socket.emit(SOCKET_EVENTS.RECIEVE_COMMAND, data));

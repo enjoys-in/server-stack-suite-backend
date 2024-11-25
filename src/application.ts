@@ -21,6 +21,7 @@ import { AppEvents } from './utils/services/Events';
 import { Modifiers } from './app/common/Modifiers';
 import cors from 'cors'
 import { EventsListeners } from './utils/services/events-listeners';
+import fileUpload from 'express-fileupload';
 const io = getSocketIo()
 
 
@@ -60,12 +61,14 @@ class AppServer {
             credentials: true
         }));
         AppServer.App.use(bodyParser.json());
+        AppServer.App.use(fileUpload({
+            tempFileDir:"./"
+          }));
         AppServer.App.use(useHttpsRedirection);
         AppServer.App.use(AppMiddlewares.attachIotoRequestHandler(io));
         AppServer.App.use(SessionHandler.forRoot());
         AppServer.App.use(cookieParser(CONFIG.SECRETS.SESSION_SECRET));
-        AppServer.App.use(bodyParser.urlencoded({ extended: false }));
-       
+        AppServer.App.use(bodyParser.urlencoded({ extended: false }));       
         
     }
     /**

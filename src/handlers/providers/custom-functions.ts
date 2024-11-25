@@ -6,6 +6,7 @@ type AppType = {
   type: string;
   buildCommand: string;
   serveCommand: string;
+  is_node:boolean
 };
 
 export class CustomFunctions {
@@ -106,9 +107,9 @@ export class CustomFunctions {
       timestamp: new Date(),
     };
   }
-  detectApplicationType(projectPath: string): AppType | null {
+  async detectApplicationType(projectPath: string):Promise< AppType >{
     const packageJsonPath = path.join(projectPath, "package.json");
-    const result: AppType = { type: "unknown", buildCommand: "", serveCommand: "" };
+    const result: AppType = { type: "unknown", buildCommand: "", serveCommand: "",is_node:false };
 
     // Rust detection (using Cargo.toml)
     if (existsSync(path.join(projectPath, "Cargo.toml"))) {
@@ -116,6 +117,7 @@ export class CustomFunctions {
         type: "Rust",
         buildCommand: "cargo build --release",
         serveCommand: "cargo run",
+        is_node:false
       };
     }
 
@@ -125,13 +127,14 @@ export class CustomFunctions {
         type: "Deno",
         buildCommand: "N/A (no build step)",
         serveCommand: "deno run --allow-all mod.ts",
+        is_node:false
       };
     }
 
     // Read package.json for other project types
     if (!existsSync(packageJsonPath)) {
       console.error("No package.json found in the project directory.");
-      return null;
+      return result;
     }
 
     const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf-8"));
@@ -147,6 +150,7 @@ export class CustomFunctions {
           type: "Vite",
           buildCommand: scripts.build || "vite build",
           serveCommand: scripts.serve || "vite preview",
+          is_node:true
         };
 
       case frameworks.includes("@nestjs/core"):
@@ -154,6 +158,8 @@ export class CustomFunctions {
           type: "NestJS",
           buildCommand: scripts.build || "nest build",
           serveCommand: scripts.start || "nest start",
+          is_node:true
+          
         };
 
       case frameworks.includes("vue") || frameworks.includes("vue-loader"):
@@ -161,6 +167,8 @@ export class CustomFunctions {
           type: "Vue",
           buildCommand: scripts.build || "vue-cli-service build",
           serveCommand: scripts.serve || "vue-cli-service serve",
+          is_node:true
+
         };
 
       case frameworks.includes("@angular/core"):
@@ -168,6 +176,8 @@ export class CustomFunctions {
           type: "Angular",
           buildCommand: scripts.build || "ng build",
           serveCommand: scripts.start || "ng serve",
+          is_node:true
+
         };
 
       case frameworks.includes("remix") || frameworks.includes("@remix-run/react"):
@@ -175,6 +185,8 @@ export class CustomFunctions {
           type: "Remix",
           buildCommand: scripts.build || "remix build",
           serveCommand: scripts.start || "remix dev",
+          is_node:true
+
         };
 
       case frameworks.includes("solid") || frameworks.includes("solid-js"):
@@ -182,6 +194,8 @@ export class CustomFunctions {
           type: "SolidJS",
           buildCommand: scripts.build || "solid-start build",
           serveCommand: scripts.start || "solid-start dev",
+          is_node:true
+
         };
 
       case frameworks.includes("next"):
@@ -189,6 +203,8 @@ export class CustomFunctions {
           type: "Next.js",
           buildCommand: scripts.build || "next build",
           serveCommand: scripts.start || "next start",
+          is_node:true
+
         };
 
       case frameworks.includes("express"):
@@ -196,6 +212,8 @@ export class CustomFunctions {
           type: "Express",
           buildCommand: "N/A (no build step)",
           serveCommand: scripts.start || "node index.js",
+          is_node:true
+
         };
 
       case frameworks.includes("fastify"):
@@ -203,6 +221,8 @@ export class CustomFunctions {
           type: "Fastify",
           buildCommand: "N/A (no build step)",
           serveCommand: scripts.start || "fastify start server.js",
+          is_node:true
+
         };
 
       case frameworks.includes("elysia"):
@@ -210,6 +230,8 @@ export class CustomFunctions {
           type: "Elysia",
           buildCommand: "N/A (no build step)",
           serveCommand: scripts.start || "node index.js",
+          is_node:true
+
         };
 
       case frameworks.includes("hono"):
@@ -217,6 +239,8 @@ export class CustomFunctions {
           type: "Hono",
           buildCommand: "N/A (no build step)",
           serveCommand: scripts.start || "node index.js",
+          is_node:true
+
         };
 
       case frameworks.includes("node") || packageJson.engines?.node:
@@ -224,6 +248,8 @@ export class CustomFunctions {
           type: "Node.js",
           buildCommand: scripts.build || "npm run build",
           serveCommand: scripts.start || "node index.js",
+          is_node:true
+
         };
 
       case packageJson.engines?.bun || existsSync(path.join(projectPath, "bun.lockb")):
@@ -231,6 +257,8 @@ export class CustomFunctions {
           type: "Bun",
           buildCommand: scripts.build || "bun build",
           serveCommand: scripts.start || "bun run start",
+          is_node:true
+
         };
 
       default:
@@ -238,6 +266,8 @@ export class CustomFunctions {
           type: "Unknown",
           buildCommand: scripts.build || "N/A",
           serveCommand: scripts.start || "N/A",
+          is_node:false
+
         };
     }
   }

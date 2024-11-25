@@ -8,10 +8,10 @@ export class FileEntity extends CommonEntity{
   @Column()
   file_name!: string;
 
-  @Column() // Store file data as binary
+  @Column()  
   path!: string;
 
-  @Column('jsonb') // Store file data as binary
+  @Column('jsonb') 
   info!: Record<any,any>;;
 
   @ManyToOne(() => ApplicationEntity, (application) => application.files)

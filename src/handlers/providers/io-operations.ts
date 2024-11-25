@@ -11,9 +11,8 @@ export class FileOperations {
      
       
    }
-    async extractZip(zipPath: string, appName: string): Promise<string> {
-        const outputDir = path.resolve(__dirname, "../deployments", appName);
-        await fs.mkdirSync(outputDir, { recursive: true });
+    async extractZip(zipPath: string, outputDir: string): Promise<string> {      
+        fs.mkdirSync(outputDir, { recursive: true });
     
         return new Promise((resolve, reject) => {
           fs.createReadStream(zipPath)

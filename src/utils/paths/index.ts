@@ -1,23 +1,23 @@
 import { join } from "path"
-export const DEPLOYMENT_DIR ="/deployments"
+export const DEPLOYMENT_DIR = process.env.HOME + "/deployments"
 export const CRUD = {
     CREATE: {
         DIR: "sudo mkdir {path}",
         FILE: `sudo echo "{content}" > {path}`
     },
-    DELETE : {
+    DELETE: {
         DIR: "sudo rm -rf {path}",
         FILE: "sudo rm -rf {path}"
     },
-    COPY :{
+    COPY: {
         FILE: "sudo cp {source_path} {destination_path}",
         DIR: "sudo cp -r {source_path} {destination_path}"
     },
-    READ : {
+    READ: {
         FILE: "cat {path}",
         DIR: "ls -l {path}"
     },
-    MOVE :{
+    MOVE: {
         FILE: "sudo mv {source_path} {destination_path}",
         DIR: "sudo mv -r {source_path} {destination_path}"
     }
@@ -125,8 +125,8 @@ export const COMMANDS = {
             DELETE: "sudo ufw delete {port}",
             LOGS: "sudo ufw status verbose",
             RUNNING_PORTS: "sudo lsof -i -P -n | grep LISTEN",
-            GET_PROCESS_ID: "sudo lsof -t -i:{port} | xargs kill -9",           
-            KILL_FROM_PROCCESS_ID: "sudo lsof -t -i:{port} | xargs kill -9",           
+            GET_PROCESS_ID: "sudo lsof -t -i:{port} | xargs kill -9",
+            KILL_FROM_PROCCESS_ID: "sudo lsof -t -i:{port} | xargs kill -9",
             KILL_PORT: "sudo kill -9 {pid}",
         },
         UPDATE_PACKAGES: ["apt update", "apt upgrade -y"],
@@ -144,7 +144,7 @@ export const COMMANDS = {
 
     },
     PM2: {
-        ADD_APP:"pm2 start '{startScript}' --name '{tag}' --",
+        ADD_APP: "pm2 start '{startScript}' --name '{tag}' --",
         RESTART: "pm2 restart {id}",
         START: "pm2 start {id}",
         STOP: "pm2 stop {id}",

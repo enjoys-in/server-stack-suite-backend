@@ -6,9 +6,11 @@ import { AppEvents } from "@/utils/services/Events";
 import { EVENT_CONSTANTS } from "@/utils/helpers/events.constants";
 import { OnEvent } from "@/utils/decorators";
 import { USER_STORE } from "@/utils/services/sockets/Sockets";
+import { LogsProvider } from "@/handlers/providers/logs.provider";
 
-
+const logsProvider = new LogsProvider()
 class ApplicationController {
+  
   async getApplication(req: Request, res: Response) {
     try {
       const id = req.params?.id;
@@ -65,9 +67,9 @@ class ApplicationController {
       const appIntance = await applicationService.createNewApplication(body)
 
       res.json({ success: true, message: "Deployment initiated.", result: { application_id:appIntance.id } })
-
+     
       if (appIntance.id) {
-        AppEvents.emit(EVENT_CONSTANTS.DEPLOYMENT.STARTED, { application_id: "appIntance.id", socketId })
+        AppEvents.emit(EVENT_CONSTANTS.DEPLOYMENT.STARTED, { application_id: appIntance.id, socketId })
       }
       res.end()
     } catch (error: any) {
@@ -82,17 +84,16 @@ class ApplicationController {
   async rollbackApplication(req: Request, res: Response) {
     try {
       const body = req.body as ApplicationDeployment
+
       const appIntance = await applicationService.createNewApplication(body)
 
-      res.json({ success: true, message: "Deployment initiated.", result: { application_id: appIntance.id } })
+      res.json({ success: true, message: "Deployment initiated.", result: { application_id: "appIntance.id" } })
 
       if (appIntance.id) {
         AppEvents.emit(EVENT_CONSTANTS.DEPLOYMENT.STARTED, JSON.stringify({
           application_id: appIntance.id,
           ...body
         }))
-
-
       }
       res.end()
     } catch (error: any) {
@@ -106,9 +107,25 @@ class ApplicationController {
   async test(req: Request, res: Response) {
     try {
       const body = req.body as  { application_id:string, socketId:string }
-      deploymentService.deployApplication(Number(body.application_id),body.socketId)
+      deploymentService.deployApplication(body.application_id,body.socketId)
 
       res.json({ success: true, message: "Deployment initiated.", result:  {} }).end()
+    } catch (error: any) {
+      if (error instanceof Error) {
+        res.json({ message: error.message, result: null, success: false })
+        return;
+      }
+      res.json({ message: "Something went wrong", result: null, success: false })
+    }
+  }
+  async deploymentLogs(req: Request, res: Response) {
+    try {
+      const application_id = req.params.application_id   
+      if (!application_id) {
+          throw new Error(`Application not found`)
+      }
+     
+      res.json({ success: true, message: "Deployment initiated.", result:  await logsProvider.fetchLogs(Number(application_id)) }).end()
     } catch (error: any) {
       if (error instanceof Error) {
         res.json({ message: error.message, result: null, success: false })
@@ -121,7 +138,7 @@ class ApplicationController {
     async:true,
   })
   private async deploymentStarted(payload: { application_id:string, socketId:string }) {   
-    deploymentService.deployApplication(Number(payload.application_id),payload.socketId)
+    deploymentService.deployApplication(payload.application_id,payload.socketId)
   }
 }
 

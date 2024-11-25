@@ -1,6 +1,5 @@
 import { Router } from "express";
-import AppIntegrationRoutes from "./intergration";
-import { UserAuthController ,HostController ,BaseController,FirewallPortsController,SslCertificatesController, ProjectController, ApplicationController} from "@/handlers/controllers";
+import { UserAuthController ,HostController ,BaseController,IntegrationController,FirewallPortsController,SslCertificatesController, ProjectController, ApplicationController} from "@/handlers/controllers";
 import { ReqValidator,HostValidator,ErrroPageValidator } from "@/utils/validators/Request.validator";
 import { Validator } from "@/middlewares/validator.middleware";
 import { JwtAuth } from "@/middlewares/auth.Middleware";
@@ -13,13 +12,18 @@ router.get("/auth/logout", UserAuthController.default.Logout)
 router.post("/auth/register", ReqValidator.Register, UserAuthController.default.Register)
 router.post("/auth/update-password", ReqValidator.UpdatePassword, UserAuthController.default.UpdatePassword)
 
+
+// Error Page Routes
+
+// Project Routes
 // Main
 router.get("/server-logs", BaseController.default.serverLogs)
 router.get("/server-info", BaseController.default.readServerAnaylitcs)
 router.get("/filesystem-info", BaseController.default.fileSystemInfo)
 router.get("/first-setup", BaseController.default.setUpServerStackSuite)
 router.get("/sftp/upload", BaseController.default.sftpUpload)
-router.get("/files", BaseController.default.getFiles)
+router.post("/file/upload", BaseController.default.uploadFiles)
+router.post("/files", BaseController.default.getFiles)
 router.get("/file-content", BaseController.default.getFileContent)
 router.get("/server-file-content", BaseController.default.getServerFileContent)
 router.put("/server-file-content", BaseController.default.updateServerFileContent)
@@ -39,8 +43,6 @@ router.route("/:server_name/ssl-certificates")
 .delete(SslCertificatesController.default.delete)
 router.get("/:server_name/ssl-certificates/:id",SslCertificatesController.default.findOne)
 
-// Third Party Apps Integration
-router.use("app",AppIntegrationRoutes)
 // Host Routes
 router.get("/:server_name/hosts",Validator.forFeature(HostValidator.getAll),HostController.default.getAllHosts)
 router.get("/:server_name/hosts/d/:domain_name",Validator.forFeature(HostValidator.getSingle), HostController.default.getSingleHost)
@@ -62,14 +64,14 @@ router.get("/project/:id", ProjectController.default.getSingleProject)
 router.delete("/project/:id", ProjectController.default.deleteProject)
 
 // Application Deploy Rouetes
-router.get("/application/:id", HostController.default.AddNewErrorPage)
+router.get("/application/:id", ApplicationController.default.getApplication)
 router.post("/application", ApplicationController.default.deployNewApplication)
 router.put("/application/:id", ApplicationController.default.updateApplicationMetadata)
 router.delete("/application/:id", ApplicationController.default.deleteApplication)
 router.post("/application/test", ApplicationController.default.test)
 
 router.get("/deployments/:id", HostController.default.AddNewErrorPage)
-router.get("/deployments/logs/:application_id", HostController.default.AddNewErrorPage)
+router.get("/deployments/logs/:application_id", ApplicationController.default.deploymentLogs)
 // router.get("/rollback-deployment/:application_id/:deployment_id", AddNewErrorPage)
 
 // Webhook Rouetes

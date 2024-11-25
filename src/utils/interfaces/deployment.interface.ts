@@ -10,10 +10,37 @@ export interface ApplicationDeployment{
   useDockerfile: string
   environment_variables: EnvironmentVariable[]
   path: Path
+  fileInfo?: FileUploadInfo
   commands: Commands
+  isZipFile:string
   tags: string[]
   selectedBuilder: string
   selectedRepo: string 
+}
+export interface FileUploadInfo {
+  fileInfo: FileInfo
+  appType: AppType
+}
+
+export interface FileInfo {
+  file_id: string
+  key: string
+  extenstion: string
+  name: string
+  modified_name: string
+  size: number
+  encoding: string
+  tempFilePath: string
+  truncated: boolean
+  mimetype: string
+  md5: string
+  file_path: string
+}
+
+export interface AppType {
+  type: string
+  buildCommand: string
+  serveCommand: string
 }
 
 export interface EnvironmentVariable {
@@ -24,6 +51,7 @@ export interface DockerMetadata {
   ports:string[]
   tag?:string
   dockerfilePath?:string
+  network?:string
 
 }
 
@@ -76,4 +104,10 @@ export interface Commands {
 export interface DeploymentResult {
     success: boolean;
     message: string;
+}
+type OngoingDeploymentStatus = "idle" | "in-progress" | "cancelled";
+
+export interface DeploymentState {
+  status: OngoingDeploymentStatus;
+  abortController?: AbortController;
 }

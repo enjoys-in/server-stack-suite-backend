@@ -7,9 +7,9 @@ import { validationResult } from 'express-validator';
 import { Logging } from '@/logs';
 import { HttpStatusCode } from '../interfaces/httpCode.interface';
 import helpers from '../helpers';
- 
 
- 
+
+
 /**
  * Redirects the user to the specified URL.
  *
@@ -86,9 +86,13 @@ export function UseDelayResponse(delayFunc: (req: Request, res: Response, next: 
  */
 export function UploadFile(data?: FileUploadOptions) {
     return function (target: any, key: string, descriptor: PropertyDescriptor) {
-        const originalMethod = descriptor.value;       
-        descriptor.value = function (req: any, res: any, next: () => void) {
-           const uploadDirPath = helpers.createPath(data?.uploadDirPath || 'public/uploads')
+        const originalMethod = descriptor.value;
+        descriptor.value = function (req: Request, res: any, next: () => void) {
+            let tmpPath = 'public/uploads'
+            if (data?.uploadDirPath) {
+                tmpPath = typeof data?.uploadDirPath === "string" ? data.uploadDirPath : data?.uploadDirPath(req)
+            }
+            const uploadDirPath = helpers.createPath(tmpPath)
             fs.mkdirSync(uploadDirPath, { recursive: true })
             let FilesArray: any = []
             try {
@@ -96,10 +100,10 @@ export function UploadFile(data?: FileUploadOptions) {
                     Logging.dev("No files found for upload.", "error")
                     return next()
                 }
-                const filetack = req.files.filetack as FileHandler[] | FileHandler
+                const filetack = req.files["name of field"] as FileHandler[] | FileHandler
                 if (Array.isArray(filetack)) {
                     filetack.forEach((file: FileHandler) => {
-                        const renameFile = file.name.replace(/\s+/g, '').trim()
+                        const renameFile = helpers.purifyString(file.name)
                         file.mv(`${path.join(uploadDirPath, renameFile)}`, async function (err: any) {
                             if (err) throw new Error(err)
                             const id = helpers.Md5Checksum(Date.now().toString())

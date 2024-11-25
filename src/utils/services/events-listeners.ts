@@ -1,20 +1,16 @@
 
-import { Repository } from "typeorm";
 import { LOGS_LEVEL_TYPES } from '../interfaces';
-import { FileOperations } from '../../handlers/providers/io-operations';
 import { EVENT_CONSTANTS } from '../helpers/events.constants';
 import { InjectRepository } from '@/factory/typeorm';
 import { InitLogs } from '../helpers/file-logs';
 import { OnEvent } from '../decorators';
 import { Server } from 'socket.io';
 import { exec } from 'child_process';
-import moment from 'moment';
-import { SOCKET_EVENTS } from '@/utils/services/sockets/socketEventConstants';
-import { SOCKET_PAYLOAD_TYPE } from '@/utils/interfaces';
 import { SERVER_COMMANDS } from '@/utils/paths';
 import { AuditLogsEnitity } from "@/factory/entities/audit_logs.entity";
+import { LogsProvider } from "@/handlers/providers/logs.provider";
 
-const fileOperations = new FileOperations()
+const logsProvider = new LogsProvider()
 const logsRepo = InjectRepository(AuditLogsEnitity)
 export class EventsListeners { 
  constructor(private io:Server) {
@@ -32,7 +28,7 @@ export class EventsListeners {
   @OnEvent(EVENT_CONSTANTS.LOGS.INFO, { async: true })
   handleLogs(message: string) {
     InitLogs(message, "INFO")
-    this.sendPayload({
+    logsProvider.sendPayload({
       level: "info",
       message
     })
@@ -41,7 +37,7 @@ export class EventsListeners {
   @OnEvent(EVENT_CONSTANTS.LOGS.ERROR, { async: true })
   handleErrorEvent(message: string) {
     InitLogs(message, "ERROR")
-    this.sendPayload({
+    logsProvider.sendPayload({
       level: "error",
       message
     })
@@ -50,7 +46,7 @@ export class EventsListeners {
   @OnEvent(EVENT_CONSTANTS.LOGS.WARN, { async: true })
   handleErrorEvent3(message: string) {
     InitLogs(message, "ERROR")
-    this.sendPayload({
+    logsProvider.sendPayload({
       level: "warn",
       message
     })
@@ -58,7 +54,7 @@ export class EventsListeners {
   @OnEvent(EVENT_CONSTANTS.LOGS.DEBUG, { async: true })
   handleErrorEvent4(message: string) {
     InitLogs(message, "ERROR")
-    this.sendPayload({
+    logsProvider.sendPayload({
       level: "debug",
       message
     })
@@ -67,7 +63,7 @@ export class EventsListeners {
   @OnEvent(EVENT_CONSTANTS.LOGS.LOG, { async: true })
   handleErrorEvent5(message: string) {
     InitLogs(message, "ERROR")
-    this.sendPayload({
+    logsProvider.sendPayload({
       level: "log",
       message
     })
@@ -79,33 +75,25 @@ export class EventsListeners {
     this.sendWithCMD(message)
   }
   
-  sendNotificationOnly(payload: Record<string, any>) {
-    this.io.emit(SOCKET_EVENTS.NOTIFICATIONS, JSON.stringify(payload))
-}
-private sendPayload(payload: SOCKET_PAYLOAD_TYPE) {
-    const LogDateTime = moment(new Date()).format("DD-MM-YYYY hh:mm:ss A");
-    const MessageBody = `${LogDateTime} [${payload.level.toLocaleUpperCase()}] ${payload.message}`;
 
-    return this.io.emit(SOCKET_EVENTS.REALTIME_SERVER_OPERATION_LOGS, { level: payload.level, message: MessageBody })
-}
 private sendWithCMD(cmd: string) {
     exec(cmd, (error, stdout, stderr) => {
         if (error && error !== null) {
-            return this.sendPayload({ message: error.message, level: "error" });
+            return logsProvider.sendPayload({ message: error.message, level: "error" });
 
         }
         if (stdout) {
-            return this.sendPayload({ message: stdout, level: "info" });
+            return logsProvider.sendPayload({ message: stdout, level: "info" });
         }
         if (stderr && stderr.trim().length > 0) {
             const MessageBody = `${stderr.toString()} \n`;
-            return this.sendPayload({ message: MessageBody, level: "warn" });
+            return logsProvider.sendPayload({ message: MessageBody, level: "warn" });
         }
-        this.sendPayload({
+        logsProvider.sendPayload({
             level: "info",
             message: "Running " + cmd
         });
-        return this.sendPayload({
+        return logsProvider.sendPayload({
             level: "info",
             message: "Done..."
         });

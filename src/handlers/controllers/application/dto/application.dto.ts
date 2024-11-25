@@ -8,6 +8,7 @@ export class CreateApplicaionDTO implements ApplicationDeployment {
     application_description!: string;
     framework_preset!: string;
     selected_domain!: string;
+    isZipFile!: string;
     reverse_proxy!: string;
     useDockerfile!: string;
     docker_metadata!: DockerMetadata;

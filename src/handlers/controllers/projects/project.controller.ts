@@ -5,6 +5,7 @@ import { IUser } from "@/utils/interfaces/user.interface";
 import { existsSync, mkdirSync } from "fs";
 import { DEPLOYMENT_DIR } from "@/utils/paths";
 import helpers from "@/utils/helpers";
+import { execSync } from "child_process";
 
 class ProjectController {
     async createNewProject(req: Request, res: Response) {
@@ -13,13 +14,15 @@ class ProjectController {
             const project = {
                 name: req.body.name,
                 description: req.body.description,
-                project_path:"",
+                project_path: "",
                 created_by: {
                     id: user.uid
                 }
             }
-            const filteredProjectName = `project-`+helpers.purifyString(req.body.name)
-            const deploymentsPath = resolve(DEPLOYMENT_DIR, user.name,filteredProjectName);
+           
+            
+            const filteredProjectName = `project-` + helpers.purifyString(req.body.name)
+            const deploymentsPath = resolve(DEPLOYMENT_DIR, user.name, filteredProjectName);
             project.project_path = deploymentsPath
             if (!existsSync(deploymentsPath)) {
                 mkdirSync(deploymentsPath, { recursive: true });

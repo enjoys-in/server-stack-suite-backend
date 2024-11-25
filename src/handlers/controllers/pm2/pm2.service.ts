@@ -1,7 +1,7 @@
-import { DeploymentLogsProvider } from "@/handlers/providers/deployment-logs.provider";
+import { LogsProvider } from "@/handlers/providers/logs.provider";
 import { Logging } from "@/logs";
 import * as pm2 from "pm2";
-const logService = new DeploymentLogsProvider()
+const logService = new LogsProvider()
 
 class PM2Service {
     constructor() {

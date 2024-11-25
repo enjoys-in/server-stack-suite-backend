@@ -1,10 +1,9 @@
 import { UploadedFile } from "express-fileupload";
-
-export interface FileUploadOptions{
+import type { Request } from "express";
+export type FileUploadOptions = {
     fieldName?: string;
-    uploadDirPath?: string;
     hasMultipleFiles: boolean;
-}
+} & { uploadDirPath?: string; } | { uploadDirPath?: (req: Request) => string }
 export interface FileHandler extends UploadedFile {
     name: string;
     /** A function to move the file elsewhere on your server */
@@ -24,4 +23,9 @@ export interface FileHandler extends UploadedFile {
     size: number;
     /** MD5 checksum of the uploaded file */
     md5: string;
+}
+export interface UploadFileBody {
+    application_name: string;
+    project_path: string
+
 }

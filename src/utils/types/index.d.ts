@@ -1,17 +1,19 @@
 import { Server } from 'socket.io';
 import { IUser } from '../interfaces/user.interface';
 import { FileHandler } from '../interfaces/fileupload.interface';
- 
+
+
 export type Type<C extends object = object> = new (...args: any) => C;
 
 type Events = "ready" | "error" | "mount";
 
 declare module "express" {
-    
+
     interface Request {
-        io?:Server
+        io?: Server
         user?: IUser;
         isAuthenticated?: boolean;
+        // files?: FileUploadInfo | FileUploadInfo[]
     }
 
     interface Application {

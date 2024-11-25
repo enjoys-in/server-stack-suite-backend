@@ -3,10 +3,10 @@ import { ChildProcess, spawn } from 'child_process'
 
 
 export class SystemOperations {
-    run(command: string, args: string[]) {
+    static run(command: string, args: string[]) {
         let child: ChildProcess
         if (!args) {
-            child = spawn(command, args,{ shell: true, stdio: 'inherit', detached: true, });
+            child = spawn(command, args, { shell: true, stdio: 'inherit', detached: true, });
         }
         child = spawn(command, { shell: true, stdio: 'inherit' });
 
@@ -22,24 +22,31 @@ export class SystemOperations {
         child.kill()
         return child
     }
-    cmd(command: string, args: string[]) {
-        let child: ChildProcess
-        if (!args) {
-            child = spawn(command, args,{ shell: true, stdio: 'inherit', detached: true, });
-        }
-        child = spawn(command, { shell: true, stdio: 'inherit' });
+   static async cmd(command: string): Promise<any> {
+        return new Promise((resolve, reject) => {
+            const process = spawn(command, { shell: true });
 
-        child.on('error', (err) => {
-            console.log(err);
+            process.stdout.on("data", (data) => {
+                resolve(data)
+            });
+
+            process.stderr.on("data", (data) => {
+                resolve(data)
+            });
+
+            process.on("close", (code) => {
+                if (code === 0) {                    
+                    resolve(code);
+                } else {
+                    
+                    reject(new Error(`Process exited with code ${code}`));
+                }
+            });
+            process.on("error", (err) => {
+                reject(err);
+            });
         });
-        child.stdout!.on('data', (data) => {
-            console.log(data);
-        });
-        child.on('close', (code) => {
-            console.log(`child process exited with code ${code}`);
-        });
-        child.kill()
-        return child
     }
-    
+
+
 }
