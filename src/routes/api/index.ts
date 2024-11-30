@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { UserAuthController ,HostController ,BaseController,IntegrationController,FirewallPortsController,SslCertificatesController, ProjectController, ApplicationController} from "@/handlers/controllers";
-import { ReqValidator,HostValidator,ErrroPageValidator } from "@/utils/validators/Request.validator";
+import { UserAuthController ,HostController ,BaseController,FirewallPortsController,SslCertificatesController, ProjectController, ApplicationController} from "@/handlers/controllers";
+import { ReqValidator,HostValidator } from "@/utils/validators/Request.validator";
 import { Validator } from "@/middlewares/validator.middleware";
 import { JwtAuth } from "@/middlewares/auth.Middleware";
 
@@ -23,7 +23,7 @@ router.get("/filesystem-info", BaseController.default.fileSystemInfo)
 router.get("/first-setup", BaseController.default.setUpServerStackSuite)
 router.get("/sftp/upload", BaseController.default.sftpUpload)
 router.post("/file/upload", BaseController.default.uploadFiles)
-router.post("/files", BaseController.default.getFiles)
+router.get("/files", BaseController.default.getFiles)
 router.get("/file-content", BaseController.default.getFileContent)
 router.get("/server-file-content", BaseController.default.getServerFileContent)
 router.put("/server-file-content", BaseController.default.updateServerFileContent)
@@ -49,6 +49,7 @@ router.get("/:server_name/hosts/d/:domain_name",Validator.forFeature(HostValidat
 router.put("/:server_name/hosts/proxy/:domain_name?", HostController.default.updateHost)
 router.delete("/:server_name/hosts/proxy/:domain_name?", HostController.default.deleteHost)
 router.post("/:server_name/hosts/proxy", HostController.default.addNewHosts)
+router.post("/application-domain-validation", HostController.default.checkReverseProxyConfig)
 
 // Error Page Routes
 router.post("/:server_name/hosts/error-page", HostController.default.AddNewErrorPage)
@@ -68,11 +69,13 @@ router.get("/application/:id", ApplicationController.default.getApplication)
 router.post("/application", ApplicationController.default.deployNewApplication)
 router.put("/application/:id", ApplicationController.default.updateApplicationMetadata)
 router.delete("/application/:id", ApplicationController.default.deleteApplication)
-router.post("/application/test", ApplicationController.default.test)
+router.post("/application-redeploy", ApplicationController.default.reDeployApplication)
+router.get("/stop-deployment/:application_id", ApplicationController.default.stopTheDeployement)
 
-router.get("/deployments/:id", HostController.default.AddNewErrorPage)
+router.get("/deployments/events/:application_id", ApplicationController.default.getDepoymentEvents)
 router.get("/deployments/logs/:application_id", ApplicationController.default.deploymentLogs)
-// router.get("/rollback-deployment/:application_id/:deployment_id", AddNewErrorPage)
+router.get("/rollback-deployment/:application_id/:deployment_id", ApplicationController.default.rollbackApplication)
+ 
 
 // Webhook Rouetes
 

@@ -5,8 +5,7 @@ import { WebhookService } from "@/handlers/providers/webhook.provider";
 import { ApplicationEntity } from "@/factory/entities/application.entity";
 import { LogsProvider } from "@/handlers/providers/logs.provider";
 import { ApplicationDeploymentStatus, Commands, DeploymentState, Path, WebhookStatus } from "@/utils/interfaces/deployment.interface";
-import { existsSync, fstat, readFileSync, rmdirSync, unlinkSync } from "fs";
-import pm2 from "../pm2/pm2.service";
+import { existsSync,  unlinkSync } from "fs";
 import { COMMANDS } from "@/utils/paths";
 import { CustomFunctions } from "@/handlers/providers/custom-functions";
 import { DeploymentTrackerEntity } from "@/factory/entities/deploymen_tracker.entity";
@@ -15,38 +14,45 @@ import { SOCKET_EVENTS } from "@/utils/services/sockets/socketEventConstants";
 
 const func = new CustomFunctions()
 const appRepository = InjectRepository(ApplicationEntity)
-const deploymentTracker = InjectRepository(DeploymentTrackerEntity)
+const deploymentTrackerRepo = InjectRepository(DeploymentTrackerEntity)
+
 const logService = new LogsProvider()
 const webhookService = new WebhookService()
-
+const deploymentTracker: Record<string, DeploymentState> = {};
 class DepploymentService {
-    private deploymentTracker: Record<string, DeploymentState> = {};
+    async stopDeploy(applicationId: string) {
+        const currentApp = deploymentTracker[`app::${applicationId}`]
+        if (currentApp.status === "in-progress") {
+            currentApp.abortController?.abort()
+            deploymentTrackerRepo.update({ application: { id: +applicationId } }, { status: "cancelled" })
+        }
+    }
     async deployApplication(applicationId: string, socketId: string): Promise<void> {
         // Check if there's an ongoing deployment
+
         logService.emitLog(socketId, applicationId, `Checking if there is another deployment is going...`, "info");
-        const trackerResult = await deploymentTracker.findOne({where:{application_id: +applicationId}})
-       
-        if (this.deploymentTracker[applicationId]?.status === "in-progress") {
+        const trackerResult = await deploymentTrackerRepo.findOne({ where: { application: { id: +applicationId } } })
+
+        if (deploymentTracker[`app::${applicationId}`]?.status === "in-progress") {
             logService.emitLog(socketId, applicationId, `Another deployment is in progress for application ${applicationId}`, "info");
 
             logService.emitLog(socketId, applicationId, `Cancelling current deployment for application ${applicationId}`, "warn");
 
             // Cancel the current deployment
-            this.deploymentTracker[applicationId].abortController?.abort();
-            this.deploymentTracker[applicationId].status = "cancelled";
-            deploymentTracker.update({id:trackerResult?.id},{status: "cancelled"})
-
+            deploymentTracker[`app::${applicationId}`].abortController?.abort();
+            deploymentTracker[`app::${applicationId}`].status = "cancelled";
+            deploymentTrackerRepo.update({ id: trackerResult?.id }, { status: "cancelled" })
             logService.emitLog(socketId, applicationId, `Cancelled the current deployment for application ${applicationId}`, "warn");
 
         }
         // Initialize new deployment state
-        logService.emitLog(socketId, applicationId, `Not Found Any Current Deployment, Initializing new deployment`, "info");
-
-        deploymentTracker.save({application_id:+applicationId,started_at:new Date().toISOString(),status: "cancelled"})
-
         const abortController = new AbortController();
 
-        this.deploymentTracker[applicationId] = { status: "in-progress", abortController };
+        logService.emitLog(socketId, applicationId, `Not Found Any Current Deployment, Initializing new deployment`, "info");
+        deploymentTrackerRepo.save({ application: { id: +applicationId }, started_at: new Date().toISOString(), status: "in-progress" })
+
+        deploymentTracker[`app::${applicationId}`] = { status: "in-progress", abortController };
+
         const application = await appRepository.findOne({
             where: { id: +applicationId }, relations: ["project"], select: {
                 project: {
@@ -58,21 +64,23 @@ class DepploymentService {
 
         try {
             if (!application) throw new Error("Application not found");
+            await this.simulateWork(applicationId, abortController.signal);
 
+            if (abortController.signal.aborted) throw new Error("Deployment cancelled, New Deployment is Requested");
+
+            // Cancellation check during provisioning process
             // Trigger provisioning webhook
             await webhookService.triggerWebhook(+applicationId, WebhookStatus.PROVISIONING, {
                 applicationId,
                 status: "provisioning",
             });
-            // Cancellation check during provisioning process
-            if (abortController.signal.aborted) throw new Error("Deployment cancelled, New Deployment is Requested");
-            await this.simulateWork(ApplicationDeploymentStatus.PROVISIONING, abortController.signal);
 
-            // Update application status
+
+            // Update application status            
             application.status = ApplicationDeploymentStatus.PROVISIONING;
             await appRepository.save(application);
-        logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS,ApplicationDeploymentStatus.PROVISIONING)
 
+            logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.PROVISIONING)
             logService.emitLog(socketId, applicationId, `Provisioning new Application State...`, "info");
 
             // Trigger building webhook
@@ -81,17 +89,19 @@ class DepploymentService {
                 status: ApplicationDeploymentStatus.BUILDING,
             });
 
-            // Cancellation check during building process
-            if (abortController.signal.aborted) throw new Error("Deployment cancelled, New Deployment is Requested");
-            await this.simulateWork(ApplicationDeploymentStatus.BUILDING, abortController.signal);
+
+
             application.status = ApplicationDeploymentStatus.BUILDING;
             await appRepository.save(application);
-        logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS,ApplicationDeploymentStatus.BUILDING)
 
+            logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.BUILDING)
             logService.emitLog(socketId, applicationId, `Start Building Application...`, "info");
 
             // Build logic
             await this.buildApplication(application, socketId);
+            delete deploymentTracker[`app::${applicationId}`]
+            deploymentTrackerRepo.update({ application: { id: +applicationId } }, { status: "build" })
+
             // case "zip":
             //     const zipFilePath = tmpPath
             //     await this.deployViaZip(zipFilePath, appName, application.commands, socketId);
@@ -103,8 +113,6 @@ class DepploymentService {
             //     status: "deploying",
             // });
             // // Cancellation check during deploying process
-            // if (abortController.signal.aborted) throw new Error("Deployment cancelled, New Deployment is Requested");
-            // await this.simulateWork(ApplicationDeploymentStatus.DEPLOYING, abortController.signal);
             // application.status = ApplicationDeploymentStatus.DEPLOYING
 
             // await appRepository.save(application);
@@ -118,8 +126,6 @@ class DepploymentService {
             //     status: "running",
             // });
 
-            // if (abortController.signal.aborted) throw new Error("Deployment cancelled, New Deployment is Requested");
-            // await this.simulateWork(ApplicationDeploymentStatus.RUNNING, abortController.signal);
             // application.status = ApplicationDeploymentStatus.RUNNING
             // await appRepository.save(application);
             // logService.emitLog(socketId,applicationId, `Application ${application.application_name} is Successfull`, "info");
@@ -141,24 +147,26 @@ class DepploymentService {
                 applicationId,
                 status: ApplicationDeploymentStatus.FAILED,
             });
-            this.deploymentTracker[applicationId].status = "idle";
+            deploymentTracker[applicationId].status = "failed";
             if (application) {
                 application.status = ApplicationDeploymentStatus.FAILED
             }
-            deploymentTracker.update({id:trackerResult?.id},{status: "cancelled",ended_at: new Date().toISOString()})
+            deploymentTrackerRepo.update({ id: trackerResult?.id }, { status: "failed", ended_at: new Date().toISOString() })
 
             logService.emitLog(socketId, applicationId, "Deployment failed: " + error.toString(), "error");
-            logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS,ApplicationDeploymentStatus.FAILED)
+            logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.FAILED)
+            await appRepository.update({ id: +applicationId }, { status: ApplicationDeploymentStatus.FAILED });
 
             throw error;
         }
     }
-    private async simulateWork(task: string, signal: AbortSignal): Promise<void> {
+    private async simulateWork(applicationId: string, signal: AbortSignal): Promise<void> {
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
-                if (signal.aborted) return reject(new Error("Deployment aborted"));           
+                if (signal.aborted) return reject(new Error("Deployment aborted"));
+                delete deploymentTracker[applicationId]
                 resolve();
-            }, 5000); // Simulate 5 seconds of work
+            }, 2000);
 
             signal.addEventListener("abort", () => {
                 clearTimeout(timeout);
@@ -170,7 +178,6 @@ class DepploymentService {
         const directory = application.project.project_path
         const repoUrl = application.selectedRepo
         const appName = application.application_name
-
 
         const applicationId = String(application.id)
         let msg = ""
@@ -184,12 +191,15 @@ class DepploymentService {
                 await this.deployViaDocker(application, socketId);
                 break;
             case "auto":
-                await this.autoDeploy(repoUrl, appName, applicationId, application.path, application.commands, socketId);
-                break;
+                logService.emitLog(socketId, applicationId, "Invalid deployment type. Only Nixpack and Git are supported", "error");
+
+                // await this.directDeployment(repoUrl, application.path, directory, appName, applicationId, application.commands, socketId)
+                break
             case "direct":
                 logService.emitLog(socketId, applicationId, `Cloning repository from ${repoUrl} to ${directory}`, "info")
                 await this.directDeployment(repoUrl, application.path, directory, appName, applicationId, application.commands, socketId)
                 break;
+
             default:
                 logService.emitLog(socketId, applicationId, "Invalid deployment type. Only Nixpack and Git are supported", "error");
         }
@@ -197,36 +207,43 @@ class DepploymentService {
 
 
     private async directDeployment(repoUrl: string, path: Path, directory: string, appName: string, applicationId: string, commands: Commands, socketId: string) {
-       try {
-        const pathWhereRepoToBeCloned = `${directory}/${appName}`
-        if (existsSync(pathWhereRepoToBeCloned)) {            
-            await this.executeCommand(`rm -rf ${pathWhereRepoToBeCloned}`, socketId, applicationId, "Cleaning up...")
-        }
-        await this.executeCommand(`git clone ${repoUrl} ${pathWhereRepoToBeCloned}`,socketId,applicationId, "Repository Successfully Cloned...")
-        if (path.root_directory.trim() === "" || path.root_directory.trim() === "./") {
-            path.root_directory = pathWhereRepoToBeCloned
-        } else {
-            path.root_directory = `${pathWhereRepoToBeCloned}/${path.root_directory}`
-        }
-        logService.emitLog(socketId, applicationId, "Installing Dependencies", "info");
+        try {
 
-        await this.executeCommand(`cd ${path.root_directory} &&  ${commands.additional_command}`, socketId, applicationId, "Dependencies Installed");
+            const pathWhereRepoToBeCloned = `${directory}/${appName}`
+            if (existsSync(pathWhereRepoToBeCloned)) {
+                await this.executeCommand(`rm -rf ${pathWhereRepoToBeCloned}`, socketId, applicationId, "Cleaning up...")
+            }
+            await this.executeCommand(`git clone ${repoUrl} ${pathWhereRepoToBeCloned}`, socketId, applicationId, "Repository Successfully Cloned...")
+            if (path.root_directory.trim() === "" || path.root_directory.trim() === "./") {
+                path.root_directory = pathWhereRepoToBeCloned
+            } else {
+                path.root_directory = `${pathWhereRepoToBeCloned}/${path.root_directory}`
+            }
+            logService.emitLog(socketId, applicationId, "Installing Dependencies", "info");
+            await this.executeCommand(`cd ${path.root_directory} &&  ${commands.install_command}`, socketId, applicationId, "Dependencies Installed");
 
-        await this.executeCommand(`cd ${path.root_directory} &&  ${commands.build_command}`, socketId, applicationId, "Build completed successfully")
-        logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS,ApplicationDeploymentStatus.DEPLOYING)
+            logService.emitLog(socketId, applicationId, "Starting Build Process...", "info");
+            await this.executeCommand(`cd ${path.root_directory} &&  ${commands.build_command}`, socketId, applicationId, "Build completed successfully")
+
+            await appRepository.update({ id: +applicationId }, { status: ApplicationDeploymentStatus.DEPLOYING });
+            logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.DEPLOYING)
 
 
+            const startCommand = COMMANDS.PM2.ADD_APP
+                .replace('{startScript}', commands.start_command)
+                .replace('{tag}', `${appName}::${applicationId}`)
+            await this.executeCommand(`pm2 delete ${appName}::${applicationId}`, socketId, applicationId, "Deleting old process")
 
-        const startCommand = COMMANDS.PM2.ADD_APP
-            .replace('{startScript}', commands.start_command)
-            .replace('{name}', appName)
+            await this.executeCommand(`cd ${path.root_directory} && ${startCommand}`, socketId, applicationId, "Application started successfully")
+            logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.RUNNING)
+            await appRepository.update({ id: +applicationId }, { status: ApplicationDeploymentStatus.RUNNING });
+            await this.executeCommand(`pm2 save`, socketId, applicationId, "Backup Created")
+            await this.executeCommand(`pm2 logs ${appName}::${applicationId}`, socketId, applicationId, "Processing logs")
+            logService.emitLog(socketId, applicationId, "Deployment Successful", "info");
 
-        await this.executeCommand(`cd ${path.root_directory} && ${startCommand}`, socketId,applicationId, "Application started successfully")
-        logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS,ApplicationDeploymentStatus.RUNNING)
-
-       } catch (error) {
+        } catch (error) {
             throw error
-       }
+        }
     }
     private async deployViaNixpack(repoUrl: string, appName: string, applicationId: string, socketId: string) {
         if (!repoUrl) {

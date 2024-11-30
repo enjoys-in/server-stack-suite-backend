@@ -64,7 +64,7 @@ class BaseController implements OnAppStart, OnAppShutDown {
             const key = helpers.SimpleHash()
             const extenstion = extname(files.name)
             const createInfo = {
-                file_id:id, key, extenstion,
+                file_id: id, key, extenstion,
                 "name": files.name,
                 "modified_name": renameFile,
                 "size": files.size,
@@ -217,15 +217,16 @@ class BaseController implements OnAppStart, OnAppShutDown {
             } else {
 
                 const Services = [
-                    { name: "Nginx", cmd: "nginx -v" },
+                    { cmd: "nginx -v", name: "Nginx", },
                     { cmd: "apachectl -v", name: "Apache" },
                     { cmd: "caddy version", name: "Caddy" },
                     { cmd: "docker -v", name: "Docker" },
                     { cmd: "kubectl version --client", name: "Kubernetes" },
                     { cmd: "pm2 -v", name: "PM2" },
-                    { name: "NodeJS", cmd: "node -v" },
+                    { cmd: "node -v", name: "NodeJS", },
                     { cmd: "git --version", name: "Git" },
                     { cmd: "certbot --version", name: "SSL" },
+                    { cmd: "nixpacks --version", name: "NixPack" },
 
                 ]
                 const checkedData = await Promise.all(

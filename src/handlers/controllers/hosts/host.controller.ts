@@ -2,13 +2,13 @@
 import { HOST_TYPE, IUser } from "@/utils/interfaces/user.interface";
 import type { Request, Response } from "express";
 import { HostsService } from "./host.service";
-import { SERVER_TYPES } from "@/utils/interfaces";
+import { SERVER_TYPE, SERVER_TYPES } from "@/utils/interfaces";
 import { AppEvents } from "@/utils/services/Events";
 import { EVENT_CONSTANTS } from "@/utils/helpers/events.constants";
 import { COMMANDS, CRUD, PATHS, SERVER_TYPE_FILE_PATH } from "@/utils/paths";
 import { FileOperations } from "@/handlers/providers/io-operations";
 import path from "path";
-import { mkdirSync, unlinkSync, writeFile, writeFileSync } from "fs";
+import { existsSync, mkdirSync, unlinkSync, writeFile, writeFileSync } from "fs";
 import { CreateErrorPageDto, CreateHostDto } from "./dto/create-host.dto";
 import { NginxSample } from "@/utils/libs/samples/ngnix/demo";
 import { CreateSslCertificateDto } from "../ssl-certificates/dto/create-ssl_certificate.dto";
@@ -19,7 +19,28 @@ const hostsService = new HostsService();
 
 class HostController {
 
-
+    async checkReverseProxyConfig(req: Request, res: Response) {
+        try {
+          const domain_name = req.body.domain_name;
+          let reverse_proxy = req.body.reverse_proxy as string;
+          
+          reverse_proxy =reverse_proxy.toLocaleUpperCase()
+      
+          const nginxFile = SERVER_TYPE_FILE_PATH[reverse_proxy as keyof typeof SERVER_TYPE_FILE_PATH].SITES_ENABLED_LOCATION_FILE.replace(":file_name", req.body.domain_name)
+          
+          if (!existsSync(nginxFile)) {
+              throw new Error(`Nginx configuration file not found for domain ${domain_name}`)
+           }
+          
+          res.json({ success: true, message: "Valid Reverse Proxy config found", result: null, }).end();
+        } catch (error: any) {
+          if (error instanceof Error) {
+            res.json({ message: error.message, result: null, success: false })
+            return;
+          }
+          res.json({ message: "Something went wrong", result: null, success: false })
+        }
+      }
     /* REDIRECTION HOSTS */
 
     /* PROXY HOSTS */
@@ -32,7 +53,9 @@ class HostController {
             if (!server_name) {
                 throw new Error("Server name is required")
             }
-
+            if (!(server_name!.toUpperCase() in SERVER_TYPE)) {
+                throw new Error("Server type not found, Invalid Server Name")
+            }
             if (!(host_type!.toUpperCase() in HOST_TYPE)) {
                 throw new Error("Host type not found, Invalid Host")
             }

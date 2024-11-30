@@ -1,10 +1,11 @@
-import { Entity, Column, OneToMany, JoinTable, ManyToOne, Relation } from "typeorm";
+import { Entity, Column, OneToMany, JoinTable, ManyToOne, Relation  } from "typeorm";
 import { FileEntity } from "./file.entity";
 import { CommonEntity } from "./common";
 import { WebhookEntity } from "./webhook.entity";
 import { DeploymentLogEntity } from "./deploymentLog.entity";
 import { ProjectsEnitity } from "./project.entity";
-import { ApplicationDeploymentStatus, DockerMetadata } from "@/utils/interfaces/deployment.interface";
+import { ApplicationDeploymentStatus, Commands, DockerMetadata, Path } from "@/utils/interfaces/deployment.interface";
+import { DeploymentTrackerEntity } from "./deploymen_tracker.entity";
 
 @Entity("applications")
 export class ApplicationEntity extends CommonEntity {
@@ -17,7 +18,7 @@ export class ApplicationEntity extends CommonEntity {
   @Column({ nullable: true })
   framework_preset!: string;
 
-  @Column({ nullable: true })
+  @Column({ nullable: true,default:null,unique: true })
   selected_domain!: string;
 
   @Column({ nullable: true })
@@ -32,16 +33,16 @@ export class ApplicationEntity extends CommonEntity {
   @Column("simple-array")
   tags!: string[];
 
-  @Column({ default: false })
-  is_zip_file!: boolean
+  @Column({ default: "", nullable: true })
+  port!: string;
 
-  @Column("simple-array", { default: [] })
-  subdomain!: string
+  @Column({ default: "git",enum:[ "zip", "git" ] })
+  source_type!: string  
 
-  @Column("simple-array", { default: [] })
-  custom_domain!: string
+  @Column("simple-array", { default: "",  nullable: true})
+  custom_domains!: string[]
 
-  @OneToMany(() => FileEntity, (file) => file.application, { cascade: true, nullable: true })
+  @OneToMany(() => FileEntity, (file) => file.application, { cascade: ['remove'], nullable: true })
   files!: FileEntity[];
 
   @Column()
@@ -60,12 +61,12 @@ export class ApplicationEntity extends CommonEntity {
   status!: string
 
   @Column({ type: "json" })
-  path!: { main_directory: string; root_directory: string; output_directory: string };
+  path!: Path;
 
   @Column({ type: "json" })
-  commands!: { build_command: string; start_command: string; additional_command: string };
+  commands!: Commands;
 
-  @OneToMany(() => DeploymentLogEntity, (log) => log.application, { nullable: true })
+  @OneToMany(() => DeploymentLogEntity, (log) => log.application, { nullable: true, cascade: ['remove'], })
   logs!: DeploymentLogEntity[];
 
   @OneToMany(() => WebhookEntity, (webhook) => webhook.applicationId, { nullable: true })
@@ -74,5 +75,8 @@ export class ApplicationEntity extends CommonEntity {
   @ManyToOne(() => ProjectsEnitity, (project) => project.applications)
   @JoinTable()
   project!: Relation<ProjectsEnitity>;
+
+  @OneToMany(() => DeploymentTrackerEntity, (webhook) => webhook.application, { nullable: true })
+  deployment_events!: DeploymentTrackerEntity[];
 }
 

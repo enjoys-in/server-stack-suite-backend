@@ -8,6 +8,7 @@ export interface ApplicationDeployment{
   reverse_proxy: string
   docker_metadata: DockerMetadata
   useDockerfile: string
+  ports: string[]
   environment_variables: EnvironmentVariable[]
   path: Path
   fileInfo?: FileUploadInfo
@@ -64,7 +65,7 @@ export interface Path {
 export interface Commands {
   build_command: string
   start_command: string
-  additional_command: string
+  install_command: string
 }
 
   export enum ApplicationDeploymentStatus {
@@ -105,7 +106,7 @@ export interface DeploymentResult {
     success: boolean;
     message: string;
 }
-type OngoingDeploymentStatus = "idle" | "in-progress" | "cancelled";
+type OngoingDeploymentStatus = "build" | "in-progress" | "cancelled"|"failed";
 
 export interface DeploymentState {
   status: OngoingDeploymentStatus;

@@ -8,23 +8,25 @@ import moment from "moment";
 
 const logRepository = InjectRepository(DeploymentLogEntity)
 const io = getSocketIo()
- type PayLoadOfLogs =  {  timestamp: string;  level: string; application_id:string; message: string; }
+type PayLoadOfLogs = { timestamp: string; level: string; application_id: string; message: string; }
 export class LogsProvider {
   private logBuffer: PayLoadOfLogs[] = [];
-  private stringLogsBuffer: string[] = []; 
+  private stringLogsBuffer: string[] = [];
   private logInterval = 5000;
- 
+
   constructor() {
     setInterval(() => this.flushLogs(), this.logInterval);
   }
-  fetchLogs(applicationId:number){
+  fetchLogs(applicationId: number) {
     return logRepository.find({
-      where:{
-        application:applicationId,
+      where: {
+        application: {
+          id: applicationId,
+        }
       }
     })
   }
-  socket(){
+  socket() {
     return io
   }
   sendNotificationOnly(payload: Record<string, any>) {
@@ -41,11 +43,11 @@ export class LogsProvider {
   }
   emitLog2(socketId: string, message: string, level: LOGS_LEVEL_TYPES) {
     const MessageBody = this.prepareMessageBody(message, level);
-    io.to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_LOGS, MessageBody);   
-    this.stringLogsBuffer.push(MessageBody);    
+    io.to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_LOGS, MessageBody);
+    this.stringLogsBuffer.push(MessageBody);
   }
-  emitLog(socketId: string, application_id:string,message: string, level: LOGS_LEVEL_TYPES) {
-    const LogPayload:PayLoadOfLogs = {
+  emitLog(socketId: string, application_id: string, message: string, level: LOGS_LEVEL_TYPES) {
+    const LogPayload: PayLoadOfLogs = {
       timestamp: moment(new Date()).format("DD-MM-YYYY hh:mm:ss A"),
       level,
       message,
@@ -54,11 +56,11 @@ export class LogsProvider {
     io.to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_LOGS, LogPayload);
     this.logBuffer.push(LogPayload);
   }
- 
+
   latestLog(id: number) {
     return logRepository.findOne({
       where: {
-        id,        
+        id,
       },
       order: { timestamp: "DESC" },
     });
@@ -67,8 +69,8 @@ export class LogsProvider {
 
   private async flushLogs(): Promise<void> {
     if (this.logBuffer.length > 0) {
-      const logs = this.logBuffer.splice(0, this.logBuffer.length); 
-      await logRepository.save(logs.map((log) => ({ log: log.message, level:log.level, timestamp: log.timestamp,metadata:log ,application:+log.application_id})));
+      const logs = this.logBuffer.splice(0, this.logBuffer.length);
+      await logRepository.save(logs.map((log) => ({ log: log.message, level: log.level, timestamp: log.timestamp, metadata: log, application: { id: +log.application_id } })));
     }
   }
   private async saveLogs(appName: string, deploymentStatus: ApplicationDeploymentStatus) {

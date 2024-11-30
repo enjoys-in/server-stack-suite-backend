@@ -119,6 +119,7 @@ export class NginxSample {
                          # {handle_options}                        
     
                 }
+                # {location}
             }
         `
     }

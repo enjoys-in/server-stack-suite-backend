@@ -144,7 +144,7 @@ export const COMMANDS = {
 
     },
     PM2: {
-        ADD_APP: "pm2 start '{startScript}' --name '{tag}' --",
+        ADD_APP: `pm2 start "{startScript}" --name "{tag}"`,
         RESTART: "pm2 restart {id}",
         START: "pm2 start {id}",
         STOP: "pm2 stop {id}",

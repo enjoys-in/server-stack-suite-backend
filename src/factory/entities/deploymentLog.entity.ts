@@ -1,10 +1,14 @@
-import { Entity,  Column } from "typeorm";
+import { Entity,  Column, ManyToOne } from "typeorm";
 import { CommonEntity } from "./common";
+import { ApplicationEntity } from "./application.entity";
 
 @Entity()
 export class DeploymentLogEntity extends CommonEntity {
-  @Column({})
-  application!: number;
+  @ManyToOne(() => ApplicationEntity, (application) => application.logs, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  application!: ApplicationEntity|null;
  
   @Column({default:"info"})
   level!: string;  

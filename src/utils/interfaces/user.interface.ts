@@ -49,7 +49,7 @@ export enum ACCESS_TYPE {
     PRIVATE = 'PRIVATE',
 }
 
-export enum HOST_TYPE {
+export enum HOST_TYPE {    
     REDIRECTION = 'REDIRECTION',
     STREAM = 'STREAM',
     PROXY = 'PROXY',

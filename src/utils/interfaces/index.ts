@@ -1,13 +1,14 @@
 export * from './createHost.interface';
 export * from './createNewSSL.interface';
 
-export type SERVER_TYPES = "nginx" | "apache" | "httpd" | "caddy"
 export enum SERVER_TYPE {
     NGINX = "nginx",
     APACHE = "apache",
     HTTPD = "httpd",
     CADDY = "caddy",
+    ALL = "all"
 }
+export type SERVER_TYPES =  Lowercase<keyof typeof SERVER_TYPE>
 export type LOGS_LEVEL_TYPES = "info" | "error" | "warn"|"debug" | "log" 
 export type SOCKET_PAYLOAD_TYPE = {
     level: LOGS_LEVEL_TYPES

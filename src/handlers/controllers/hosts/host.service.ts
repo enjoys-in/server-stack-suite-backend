@@ -74,6 +74,18 @@ export class HostsService {
   }
   findAll(server_type: SERVER_TYPES, host_type: HOST_TYPE, fields: "*" | string) {
     let select = {}
+    let where = {}
+
+    if (server_type === "all") {
+      where = {
+        host_type: HOST_TYPE[host_type],
+      }
+    } else {
+      where = {
+        host_type: HOST_TYPE[host_type],
+        server_type: SERVER_TYPE[(server_type.toLocaleUpperCase()) as FixedServerTypeName],
+      }
+    }
     if (fields !== "*") {
       decodeURIComponent(fields).split(',')
         .map((item) => ({ [item]: true }))
@@ -96,10 +108,7 @@ export class HostsService {
     }
 
     return hostsRepository.find({
-      where: {
-        host_type: HOST_TYPE[host_type],
-        server_type: SERVER_TYPE[(server_type.toLocaleUpperCase()) as FixedServerTypeName],
-      },
+      where,
       select,
       relations: {
         ssl: true
