@@ -1,4 +1,6 @@
-export interface ApplicationDeployment{
+import Dockerode from "dockerode"
+
+export interface ApplicationDeployment {
   project_id: string
   project_path: string
   application_name: string
@@ -13,10 +15,10 @@ export interface ApplicationDeployment{
   path: Path
   fileInfo?: FileUploadInfo
   commands: Commands
-  isZipFile:string
+  isZipFile: string
   tags: string[]
   selectedBuilder: string
-  selectedRepo: string 
+  selectedRepo: string
 }
 export interface FileUploadInfo {
   fileInfo: FileInfo
@@ -49,10 +51,10 @@ export interface EnvironmentVariable {
   value: string
 }
 export interface DockerMetadata {
-  ports:string[]
-  tag?:string
-  dockerfilePath?:string
-  network?:string
+  ports: string[]
+  tag?: string
+  dockerfilePath?: string
+  network?: string
 
 }
 
@@ -68,47 +70,100 @@ export interface Commands {
   install_command: string
 }
 
-  export enum ApplicationDeploymentStatus {
-    PROVISIONING = "PROVISIONING",
-    BUILDING = "BUILDING",
-    DEPLOYING = "DEPLOYING",
-    FAILED = "FAILED",
-    ACTIVE = "ACTIVE",
-    RUNNING = "RUNNING",
-    TERMINATING = "TERMINATING",
-    TERMINATED = "TERMINATED",
-    POWER_OFF = "POWER_OFF",
-  }
-  export enum WebhookStatus {
-    PROVISIONING = "application:provisioning",
-    BUILDING = "application:building",
-    DEPLOYING = "application:deploying",  
-    READY = "application:ready",
-    FAILED = "application:failed",
-    DELETED = "application:deleted",
-    RESOLVED = "application:resolved",
-    UPDATED = "application:updated",
-    STARTED = "application:started",
-    STOPPED = "application:stopped",  
-    TERMINATED = "application:terminated",
-    POWER_OFF = "application:power_off",
-  }
-  export interface DeploymentOptions {
-    type: "nixpack" | "docker" | "zip";
-    appName: string;
-    repoUrl?: string; // Required for nixpack or docker
-    dockerfilePath?: string; // Required for docker
-    zipFilePath?: string; // Required for zip
-    buildCommand?: string; // Optional build command for nixpack
-    startCommand: string; // Start command for all methods
+export enum ApplicationDeploymentStatus {
+  PROVISIONING = "PROVISIONING",
+  BUILDING = "BUILDING",
+  DEPLOYING = "DEPLOYING", 
+  DEPLOYED = "DEPLOYED",  
+  FAILED = "FAILED",
+  RUNNING = "RUNNING",
+
+}
+export enum ApplicationState {
+  RUNNING = "RUNNING",
+  TERMINATING = "TERMINATING",
+  TERMINATED = "TERMINATED",
+  POWER_OFF = "POWER_OFF",
+}
+export enum WebhookStatus {
+  PROVISIONING = "application:provisioning",
+  BUILDING = "application:building",
+  DEPLOYING = "application:deploying",
+  READY = "application:ready",
+  FAILED = "application:failed",
+  DELETED = "application:deleted",
+  RESOLVED = "application:resolved",
+  UPDATED = "application:updated",
+  STARTED = "application:started",
+  STOPPED = "application:stopped",
+  TERMINATED = "application:terminated",
+  POWER_OFF = "application:power_off",
+}
+export interface DeploymentOptions {
+  type: "nixpack" | "docker" | "zip";
+  appName: string;
+  repoUrl?: string; // Required for nixpack or docker
+  dockerfilePath?: string; // Required for docker
+  zipFilePath?: string; // Required for zip
+  buildCommand?: string; // Optional build command for nixpack
+  startCommand: string; // Start command for all methods
 }
 export interface DeploymentResult {
-    success: boolean;
-    message: string;
+  success: boolean;
+  message: string;
 }
-type OngoingDeploymentStatus = "build" | "in-progress" | "cancelled"|"failed";
+export enum IntegrationsProviderType{
+  DOCKER_HUB = "DOCKER_HUB",
+  GITHUB = "GITHUB",
+  BITBUCKET = "BITBUCKET",
+  GITEA = "GITEA",
+  GITLAB = "GITLAB",
+  TELEGRAM = "TELEGRAM",
+  SLACK = "SLACK",
+  AWS = "AWS",
+  AZURE = "AZURE",
+  CLOUDFLARE = "CLOUDFLARE",
+  HEROKU = "HEROKU",
+  DIGITAL_OCEAN = "DIGITAL_OCEAN",  
+}
+ 
+export type IntegrationsProviderBody = { 
+  [key in IntegrationsProviderType ]: string;
 
+}
+export enum IntegrationsType {
+  SERVER= "SERVER",
+  APP = "APP",
+  STORAGE = "STORAGE",
+  DATABASE = "DATABASE"
+
+}
+type OngoingDeploymentStatus = "build" | "in-progress" | "cancelled" | "failed";
+export enum ContainerStatus {
+  RUNNING = "RUNNING",
+  STOPPED = "STOPPED",
+  EXITED = "EXITED",
+}
+export enum DeploymentStatus {
+  PENDING = "PENDING",
+  BUILDING = "BUILDING",
+  DEPLOYING = "DEPLOYING",  
+  STOPPED = "STOPPED",
+  ACTIVE = "ACTIVE",
+  FAILED = "FAILED",
+  SUCCESS = "SUCCESS",
+}
 export interface DeploymentState {
   status: OngoingDeploymentStatus;
   abortController?: AbortController;
+}
+export interface DockerCreateContainerOptions {
+  Image: string
+  name: string
+  Cmd?: string[]
+  ExposedPorts?: { [key: string]: {} }
+  Env?: string[]
+  WorkingDir?: string
+  Healthcheck?: Dockerode.ContainerCreateOptions["Healthcheck"]
+  HostConfig: Dockerode.ContainerCreateOptions["HostConfig"]
 }

@@ -1,23 +1,42 @@
-import { Column, Entity, ManyToOne, } from "typeorm";
+import { Column, Entity, ManyToOne, OneToMany, Relation, } from "typeorm";
 import { CommonEntity } from "./common";
 import { ApplicationEntity } from "./application.entity";
+import { DeploymentLogEntity } from "./deploymentLog.entity";
+import { DeploymentStatus } from "@/utils/interfaces/deployment.interface";
+import { ContainerEntity } from "./container.entity";
 
-@Entity("deployment_tracker")
+@Entity("deployments")
 export class DeploymentTrackerEntity extends CommonEntity {
 
-    @ManyToOne(() => ApplicationEntity, (application) => application.logs, {
-        onDelete: 'SET NULL',
-        nullable: true,
-      })
-      application!: ApplicationEntity|null;
-   
+  @Column({ unique: true })
+  deployment_id!: string;
 
-    @Column({ enum: ["idle", "in-progress", "cancelled"], default: "idle" })
-    status!: string;
+  @ManyToOne(() => ApplicationEntity, (application) => application.deployments, {
+    onDelete: 'SET NULL',
+    nullable: true,
+  })
+  application!:  Relation<ApplicationEntity>;
 
-    @Column()
-    started_at!: string;
+  @Column({nullable: true, default: null })
+  container_name!: string;
 
-    @Column({ default: "" })
-    ended_at!: string;
+  @Column({ enum: DeploymentStatus, default: DeploymentStatus.PENDING })
+  status!: string;
+
+  @OneToMany(() => ContainerEntity, (container) => container.deployment)
+containers!: ContainerEntity[];
+
+  @Column()
+  started_at!: string;
+
+  @OneToMany(() => DeploymentLogEntity, (log) => log.deployment, { nullable: true, cascade: ['remove'], })
+  logs!: DeploymentLogEntity[];
+
+  @Column({ default: "" })
+  ended_at!: string;
+
+ 
+  stopDeployment() {
+    this.status = DeploymentStatus.STOPPED;    
+  }
 }

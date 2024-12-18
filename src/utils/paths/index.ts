@@ -1,5 +1,19 @@
 import { join } from "path"
 export const DEPLOYMENT_DIR = process.env.HOME + "/deployments"
+export const BUILD_PACKS={
+    NIXPACKS:{
+        build:"nixpack build . --name {name}",
+        plan:"nixpack plan . --format toml",
+        export_nixpacksToml_file:"nixpacks plan . -f toml > nixpacks.toml",
+        export_docker_file:"nixpacks build . -o .",
+    },
+    DOCKER:{
+        build:"docker build -t {name}",
+        run:"docker run -d -p {port}:80 {name}",
+        stop:"docker stop {container_id}",
+        remove:"docker rm {container_id}"
+    }
+}
 export const CRUD = {
     CREATE: {
         DIR: "sudo mkdir {path}",

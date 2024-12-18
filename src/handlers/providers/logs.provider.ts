@@ -1,14 +1,15 @@
+import { DeploymentTrackerEntity } from "@/factory/entities/deploymen_tracker.entity";
 import { DeploymentLogEntity } from "@/factory/entities/deploymentLog.entity";
 import { InjectRepository } from "@/factory/typeorm";
 import { LOGS_LEVEL_TYPES, SOCKET_PAYLOAD_TYPE } from "@/utils/interfaces";
-import { ApplicationDeploymentStatus } from "@/utils/interfaces/deployment.interface";
 import { SOCKET_EVENTS } from "@/utils/services/sockets/socketEventConstants";
 import { getSocketIo } from "@/utils/services/sockets/Sockets";
 import moment from "moment";
 
 const logRepository = InjectRepository(DeploymentLogEntity)
+const deploymentsRepository = InjectRepository(DeploymentTrackerEntity)
 const io = getSocketIo()
-type PayLoadOfLogs = { timestamp: string; level: string; application_id: string; message: string; }
+type PayLoadOfLogs = { timestamp: string; level: string; deployment_id: number; message: string; }
 export class LogsProvider {
   private logBuffer: PayLoadOfLogs[] = [];
   private stringLogsBuffer: string[] = [];
@@ -17,13 +18,12 @@ export class LogsProvider {
   constructor() {
     setInterval(() => this.flushLogs(), this.logInterval);
   }
-  fetchLogs(applicationId: number) {
-    return logRepository.find({
-      where: {
-        application: {
-          id: applicationId,
-        }
-      }
+  fetchLogs(id: number) {
+    return deploymentsRepository.findOne({
+      where: { id },
+      relations: ["logs"], 
+      
+      
     })
   }
   socket() {
@@ -46,12 +46,12 @@ export class LogsProvider {
     io.to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_LOGS, MessageBody);
     this.stringLogsBuffer.push(MessageBody);
   }
-  emitLog(socketId: string, application_id: string, message: string, level: LOGS_LEVEL_TYPES) {
+  emitLog(socketId: string, deployment_id: number, message: string, level: LOGS_LEVEL_TYPES) {
     const LogPayload: PayLoadOfLogs = {
       timestamp: moment(new Date()).format("DD-MM-YYYY hh:mm:ss A"),
       level,
       message,
-      application_id
+     deployment_id
     };
     io.to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_LOGS, LogPayload);
     this.logBuffer.push(LogPayload);
@@ -70,21 +70,8 @@ export class LogsProvider {
   private async flushLogs(): Promise<void> {
     if (this.logBuffer.length > 0) {
       const logs = this.logBuffer.splice(0, this.logBuffer.length);
-      await logRepository.save(logs.map((log) => ({ log: log.message, level: log.level, timestamp: log.timestamp, metadata: log, application: { id: +log.application_id } })));
+      await logRepository.save(logs.map((log) => ({ log: log.message, level: log.level, timestamp: log.timestamp, metadata: log, deployment: { id: +log.deployment_id } })));
     }
   }
-  private async saveLogs(appName: string, deploymentStatus: ApplicationDeploymentStatus) {
-    try {
-      const logs = this.stringLogsBuffer.join("\n"); // Combine all logs into a single string.
-      //   const deploymentLog =logRepository.create({
-      // application:{id:1},
-      //     deploymentStatus,
-      //     logs,
-      //   });
-      //   await logRepository.save(deploymentLog);
-      this.stringLogsBuffer = [];
-    } catch (error) {
-      console.error("Failed to save logs:", error);
-    }
-  }
+  
 }

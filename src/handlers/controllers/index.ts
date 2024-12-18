@@ -6,3 +6,4 @@ export * as  SslCertificatesController from './ssl-certificates/ssl_certificates
 export * as  IntegrationController from './integration/integration.controller'
 export * as ProjectController from './projects/project.controller'
 export * as ApplicationController from './application/app.controller'
+export * as ContainerController from './containers/containers.controller'

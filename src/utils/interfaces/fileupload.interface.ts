@@ -29,3 +29,18 @@ export interface UploadFileBody {
     project_path: string
 
 }
+export interface FileUploadedInfo  {
+    file_id: string;
+    key: string;
+    extenstion: string;
+    name: string;
+    modified_name: string;
+    size: number;
+    encoding: string;
+    tempFilePath: string;
+    truncated: boolean;
+    mimetype: string;
+    md5: string;
+    filePath: string;
+    uploadPath: string;
+}

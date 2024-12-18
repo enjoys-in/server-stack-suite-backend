@@ -1,14 +1,15 @@
-import { Entity,  Column, ManyToOne } from "typeorm";
+import { Entity,  Column, ManyToOne, Relation } from "typeorm";
 import { CommonEntity } from "./common";
-import { ApplicationEntity } from "./application.entity";
+import { DeploymentTrackerEntity } from "./deploymen_tracker.entity";
 
-@Entity()
+@Entity("deployment_logs")
 export class DeploymentLogEntity extends CommonEntity {
-  @ManyToOne(() => ApplicationEntity, (application) => application.logs, {
+
+  @ManyToOne(() => DeploymentTrackerEntity, (deployment) => deployment.logs, {
     onDelete: 'SET NULL',
     nullable: true,
   })
-  application!: ApplicationEntity|null;
+  deployment!: Relation<DeploymentTrackerEntity>;
  
   @Column({default:"info"})
   level!: string;  

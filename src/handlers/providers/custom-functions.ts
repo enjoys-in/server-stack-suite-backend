@@ -1,16 +1,25 @@
 import * as os from "os"
-import { readFileSync, existsSync } from "fs";
+import { readFileSync, existsSync, readdirSync } from "fs";
 import path from "path";
 
+const lockFiles = {
+  deno: 'deno.lock',
+  bun: 'bun.lockb',
+  pnpm: 'pnpm-lock.yaml',
+  npm: 'package.lock',
+  yarn: 'yarn.lock'
+};
+type Apps = "Rust" | "Deno" | "Vite" | "NestJS" | "Vue" | "Angular" | "Remix" | "SolidJS" | "Next.js" | "Express" | "Fastify" | "Elysia" | "Hono" | "Node.js" | "Bun" | "Unknown"
 type AppType = {
-  type: string;
+  type: Apps;
   buildCommand: string;
   serveCommand: string;
-  is_node:boolean
+  is_node: boolean
 };
-
+type SelectedApps = Lowercase<keyof typeof lockFiles>
 export class CustomFunctions {
   async RealTimeUsageData() {
+
     const nI = os.networkInterfaces()
     const performanceLoadData = () => new Promise(async (resolve, reject) => {
       // What do we need to know FROM NODE about performance?
@@ -107,9 +116,27 @@ export class CustomFunctions {
       timestamp: new Date(),
     };
   }
-  async detectApplicationType(projectPath: string):Promise< AppType >{
+
+  async detectAppPackageEnvironment(projectPath: string): Promise<SelectedApps> {
+
+    switch (true) {
+      case existsSync(path.join(projectPath, lockFiles.deno)):
+        return 'deno';
+      case existsSync(path.join(projectPath, lockFiles.bun)):
+        return 'bun';
+      case existsSync(path.join(projectPath, lockFiles.pnpm)):
+        return 'pnpm';
+      case existsSync(path.join(projectPath, lockFiles.yarn)):
+        return 'yarn';
+      case existsSync(path.join(projectPath, lockFiles.npm)):
+      default:
+        return 'npm';
+    }
+
+  }
+  async detectApplicationType(projectPath: string): Promise<AppType> {
     const packageJsonPath = path.join(projectPath, "package.json");
-    const result: AppType = { type: "unknown", buildCommand: "", serveCommand: "",is_node:false };
+    const result: AppType = { type: "Unknown", buildCommand: "", serveCommand: "", is_node: false };
 
     // Rust detection (using Cargo.toml)
     if (existsSync(path.join(projectPath, "Cargo.toml"))) {
@@ -117,7 +144,7 @@ export class CustomFunctions {
         type: "Rust",
         buildCommand: "cargo build --release",
         serveCommand: "cargo run",
-        is_node:false
+        is_node: false
       };
     }
 
@@ -127,7 +154,7 @@ export class CustomFunctions {
         type: "Deno",
         buildCommand: "N/A (no build step)",
         serveCommand: "deno run --allow-all mod.ts",
-        is_node:false
+        is_node: false
       };
     }
 
@@ -150,7 +177,7 @@ export class CustomFunctions {
           type: "Vite",
           buildCommand: scripts.build || "vite build",
           serveCommand: scripts.serve || "vite preview",
-          is_node:true
+          is_node: true
         };
 
       case frameworks.includes("@nestjs/core"):
@@ -158,8 +185,8 @@ export class CustomFunctions {
           type: "NestJS",
           buildCommand: scripts.build || "nest build",
           serveCommand: scripts.start || "nest start",
-          is_node:true
-          
+          is_node: true
+
         };
 
       case frameworks.includes("vue") || frameworks.includes("vue-loader"):
@@ -167,7 +194,7 @@ export class CustomFunctions {
           type: "Vue",
           buildCommand: scripts.build || "vue-cli-service build",
           serveCommand: scripts.serve || "vue-cli-service serve",
-          is_node:true
+          is_node: true
 
         };
 
@@ -176,7 +203,7 @@ export class CustomFunctions {
           type: "Angular",
           buildCommand: scripts.build || "ng build",
           serveCommand: scripts.start || "ng serve",
-          is_node:true
+          is_node: true
 
         };
 
@@ -185,7 +212,7 @@ export class CustomFunctions {
           type: "Remix",
           buildCommand: scripts.build || "remix build",
           serveCommand: scripts.start || "remix dev",
-          is_node:true
+          is_node: true
 
         };
 
@@ -194,7 +221,7 @@ export class CustomFunctions {
           type: "SolidJS",
           buildCommand: scripts.build || "solid-start build",
           serveCommand: scripts.start || "solid-start dev",
-          is_node:true
+          is_node: true
 
         };
 
@@ -203,7 +230,7 @@ export class CustomFunctions {
           type: "Next.js",
           buildCommand: scripts.build || "next build",
           serveCommand: scripts.start || "next start",
-          is_node:true
+          is_node: true
 
         };
 
@@ -212,7 +239,7 @@ export class CustomFunctions {
           type: "Express",
           buildCommand: "N/A (no build step)",
           serveCommand: scripts.start || "node index.js",
-          is_node:true
+          is_node: true
 
         };
 
@@ -221,7 +248,7 @@ export class CustomFunctions {
           type: "Fastify",
           buildCommand: "N/A (no build step)",
           serveCommand: scripts.start || "fastify start server.js",
-          is_node:true
+          is_node: true
 
         };
 
@@ -230,7 +257,7 @@ export class CustomFunctions {
           type: "Elysia",
           buildCommand: "N/A (no build step)",
           serveCommand: scripts.start || "node index.js",
-          is_node:true
+          is_node: true
 
         };
 
@@ -239,7 +266,7 @@ export class CustomFunctions {
           type: "Hono",
           buildCommand: "N/A (no build step)",
           serveCommand: scripts.start || "node index.js",
-          is_node:true
+          is_node: true
 
         };
 
@@ -248,7 +275,7 @@ export class CustomFunctions {
           type: "Node.js",
           buildCommand: scripts.build || "npm run build",
           serveCommand: scripts.start || "node index.js",
-          is_node:true
+          is_node: true
 
         };
 
@@ -257,7 +284,7 @@ export class CustomFunctions {
           type: "Bun",
           buildCommand: scripts.build || "bun build",
           serveCommand: scripts.start || "bun run start",
-          is_node:true
+          is_node: true
 
         };
 
@@ -266,7 +293,7 @@ export class CustomFunctions {
           type: "Unknown",
           buildCommand: scripts.build || "N/A",
           serveCommand: scripts.start || "N/A",
-          is_node:false
+          is_node: false
 
         };
     }

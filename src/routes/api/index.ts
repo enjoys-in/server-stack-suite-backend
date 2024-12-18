@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { UserAuthController ,HostController ,BaseController,FirewallPortsController,SslCertificatesController, ProjectController, ApplicationController} from "@/handlers/controllers";
+import { UserAuthController ,HostController ,BaseController,ContainerController,
+    FirewallPortsController,SslCertificatesController, ProjectController, ApplicationController} from "@/handlers/controllers";
 import { ReqValidator,HostValidator } from "@/utils/validators/Request.validator";
 import { Validator } from "@/middlewares/validator.middleware";
 import { JwtAuth } from "@/middlewares/auth.Middleware";
@@ -66,14 +67,18 @@ router.delete("/project/:id", ProjectController.default.deleteProject)
 
 // Application Deploy Rouetes
 router.get("/application/:id", ApplicationController.default.getApplication)
+router.get("/has-application/:id", ApplicationController.default.checkExistApplication)
+// router.get("/application/:id/health", ApplicationController.default.getApplicationHealth) // Health check
 router.post("/application", ApplicationController.default.deployNewApplication)
 router.put("/application/:id", ApplicationController.default.updateApplicationMetadata)
 router.delete("/application/:id", ApplicationController.default.deleteApplication)
 router.post("/application-redeploy", ApplicationController.default.reDeployApplication)
 router.get("/stop-deployment/:application_id", ApplicationController.default.stopTheDeployement)
+router.get("/container/files/:application_id/:container_tag", ContainerController.default.getContainerFiles)
 
 router.get("/deployments/events/:application_id", ApplicationController.default.getDepoymentEvents)
-router.get("/deployments/logs/:application_id", ApplicationController.default.deploymentLogs)
+router.get("/deployments/logs/:deployment_id", ApplicationController.default.deploymentLogs)
+router.get("/connect/:namespace", ApplicationController.default.getLiveTailLogs)
 router.get("/rollback-deployment/:application_id/:deployment_id", ApplicationController.default.rollbackApplication)
  
 

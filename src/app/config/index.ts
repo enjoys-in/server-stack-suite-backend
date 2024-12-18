@@ -44,10 +44,9 @@ const __config = {
         CACHE_PORT: Number(process.env.PORT) || 6379,
     },
     PROVIDERS: {
-        GOOGLE: {
+        GITHUB: {
             GOOGLE_CLIENT_ID: String(process.env.GOOGLE_CLIENT_ID),
             GOOGLE_CLIENT_SECRET: String(process.env.GOOGLE_CLIENT_SECRET),
-            GOOGLE_CALLBACK_URL: String(process.env.GOOGLE_CALLBACK_URL),
         },
     },
 };

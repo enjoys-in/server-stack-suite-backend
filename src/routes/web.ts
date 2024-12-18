@@ -1,8 +1,8 @@
 import { Router, Request, Response } from "express";
 import { HttpException } from "@enjoys/exception"
 import { JwtAuth } from "@/middlewares/auth.Middleware";
-import ApiRoutes from "./api";
 import IntergrationRoutes from "./api/intergration";
+import ApiRoutes from "./api";
 
 
 const router = Router();

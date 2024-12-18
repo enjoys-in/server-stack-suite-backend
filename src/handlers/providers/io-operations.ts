@@ -5,21 +5,58 @@ import * as path from "path";
 import * as unzipper from "unzipper";
 import { DEPLOYMENT_DIR } from '@/utils/paths';
  
+/**
+ * Class for handling various file operations including uploading, extracting, reading, writing, appending, 
+ * deleting, checking existence, and changing permissions of files. 
+ * 
+ * Methods:
+ * - uploadZipFile: Uploads a zip file to a specified directory.
+ * - extractZip: Extracts a zip file to a specified output directory.
+ * - messageBody: Formats a log message with a timestamp and log level.
+ * - readFile: Reads the content of a file synchronously.
+ * - writeFile: Writes data to a file synchronously.
+ * - appendFile: Appends data to a file synchronously.
+ * - deleteFile: Deletes a file synchronously.
+ * - checkFileExists: Checks if a file exists.
+ * - changePermission: Changes the permission of a file.
+ */
 export class FileOperations {
    async uploadZipFile(fileNameWithPath:string){
     const zipPath = path.resolve(DEPLOYMENT_DIR,  fileNameWithPath);
      
       
    }
-    async extractZip(zipPath: string, outputDir: string): Promise<string> {      
+   /**
+     * Extracts the contents of a ZIP file to a specified output directory.
+     * 
+     * @param zipPath - The path to the ZIP file to be extracted.
+     * @param outputDir - The directory where the contents of the ZIP file will be extracted.
+     * @returns A promise that resolves with the output directory path upon successful extraction.
+     * @throws An error if the extraction process fails.
+     */
+    async extractZip(zipPath: string, outputDir: string,cb?:(msg:string)=>void): Promise<string> {      
         fs.mkdirSync(outputDir, { recursive: true });
     
         return new Promise((resolve, reject) => {
-          fs.createReadStream(zipPath)
-            .pipe(unzipper.Extract({ path: outputDir }))
-            .on("close", () => resolve(outputDir))
-            .on("error", (err) => reject(err));
-        });
+             fs.createReadStream(zipPath)
+              .pipe(unzipper.Parse())
+              .on("entry", (entry) => {
+                const filePath = `Extracting: ${outputDir}/${entry.path}`;
+           
+                
+                if (cb) cb(filePath);
+                if (entry.type === "Directory") {
+                  fs.mkdirSync(filePath, { recursive: true });
+                  entry.autodrain();
+                } else {
+                  entry.pipe(fs.createWriteStream(filePath));
+                }
+              })
+              .on("close", () => {                
+                resolve(outputDir);
+              })
+              .on("error", (err) => reject(err));
+          });
       }
     private messageBody(payload: SOCKET_PAYLOAD_TYPE) {
         const LogDateTime = new Date().toISOString();

@@ -5,6 +5,7 @@ import { SOCKET_EVENTS } from "./socketEventConstants";
 import { SocketListeners } from "./socket-listeners";
 import * as  chokidar from "chokidar"
 import * as pty from "node-pty"
+import containersService from "@/handlers/controllers/containers/containers.service";
 
 let ptyProcess: pty.IPty;
 let io: Server;
@@ -23,23 +24,61 @@ const InitSocketConnection = (server?: HttpServer) => {
   const listeners = new SocketListeners()
   io.on('connection', (socket: Socket) => {
     console.log(`Socket : ${socket.id}`);
+    SocketListeners.handleConnection(socket)
+    listeners.sendPerformanceData(socket)
+
     socket.on("add_user", (data: { user_id: string }) => {
       USER_STORE.set(String(data.user_id), socket.id)
     });
-    socket.on(SOCKET_EVENTS.CONNECT_TERMINAL, (path:string|undefined) => {
+    // Listen for TErminal  events
+    socket.on(SOCKET_EVENTS.CONNECT_TERMINAL, (path: string | undefined) => {
       ptyProcess = pty.spawn('bash', [], {
         name: 'xterm-256color',
         cols: 140,
         rows: 25,
-        cwd: path||process.env.HOME,
+        cwd: path || process.env.HOME,
         env: process.env
       });
       ptyProcess.onData((data) => socket.emit(SOCKET_EVENTS.RECIEVE_COMMAND, data));
       socket.on(SOCKET_EVENTS.SEND_COMMAND, (data: string) => ptyProcess.write(data))
     })
     socket.on(SOCKET_EVENTS.SSH_EMIT_RESIZE, (size: any) => ptyProcess.resize(size.cols, size.rows))
-    SocketListeners.handleConnection(socket)
-    listeners.sendPerformanceData(socket)
+
+
+
+    // Listen for docker Shell events
+    socket.on(SOCKET_EVENTS.CONTAINER_SHELL_START, async (data: string) => {
+      const container = containersService.getContainer(data);
+      const shell = await container.exec({
+        //   Cmd: ["bash", "-c", "echo $SHELL"],
+        AttachStdout: true,
+        AttachStderr: true,
+        AttachStdin: true,
+        Tty: true,
+        Cmd: ["/bin/bash"],
+      });
+      const stream = await shell.start({ hijack: true, stdin: true });
+      socket.on(SOCKET_EVENTS.CONTAINER_SHELL_MESSAGE, (msg) => stream.write(msg));
+      socket.on(SOCKET_EVENTS.CONTAINER_SHELL_RESIZE, (size: any) => shell.resize({ w: size.cols, h: size.rows }, (err: any) => {
+        if (err) {
+          socket.emit(SOCKET_EVENTS.CONTAINER_SHELL_INPUT, `Resize error: ${err.message}`);
+        }
+      }))
+      stream.on("data", (chunk) => {
+        socket.emit(SOCKET_EVENTS.CONTAINER_SHELL_INPUT, chunk.toString('utf8'));
+      });
+
+      stream.on("end", () => io.close());
+      stream.on("error", (err) => {
+        socket.emit(SOCKET_EVENTS.CONTAINER_SHELL_INPUT, `Error: ${err.message}`);
+
+      });
+    })
+    // watcher.on("all", (event, path) => {
+    //   io.emit(SOCKET_EVENTS.FILE_CHANGE, { event, path });
+    // });
+
+
 
     socket.on("disconnect", () => {
       if (ptyProcess) ptyProcess.kill()
@@ -49,9 +88,6 @@ const InitSocketConnection = (server?: HttpServer) => {
     socket.on("disconnecting", async (reason) => {
       console.log(`socket ${socket.id} disconnected due to ${reason}`);
     });
-    // watcher.on("all", (event, path) => {
-    //   io.emit(SOCKET_EVENTS.FILE_CHANGE, { event, path });
-    // });
   });
 
   return io

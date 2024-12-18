@@ -1,11 +1,11 @@
-import { Entity, Column, OneToMany, JoinTable, ManyToOne, Relation  } from "typeorm";
+import { Entity, Column, OneToMany, JoinTable, ManyToOne, Relation, OneToOne } from "typeorm";
 import { FileEntity } from "./file.entity";
 import { CommonEntity } from "./common";
 import { WebhookEntity } from "./webhook.entity";
-import { DeploymentLogEntity } from "./deploymentLog.entity";
 import { ProjectsEnitity } from "./project.entity";
 import { ApplicationDeploymentStatus, Commands, DockerMetadata, Path } from "@/utils/interfaces/deployment.interface";
 import { DeploymentTrackerEntity } from "./deploymen_tracker.entity";
+import { ContainerEntity } from "./container.entity";
 
 @Entity("applications")
 export class ApplicationEntity extends CommonEntity {
@@ -15,10 +15,13 @@ export class ApplicationEntity extends CommonEntity {
   @Column()
   application_description!: string;
 
+  @Column({default:""})
+  application_id!: string;
+
   @Column({ nullable: true })
   framework_preset!: string;
 
-  @Column({ nullable: true,default:null,unique: true })
+  @Column({ nullable: true, default: null, unique: true })
   selected_domain!: string;
 
   @Column({ nullable: true })
@@ -36,14 +39,14 @@ export class ApplicationEntity extends CommonEntity {
   @Column({ default: "", nullable: true })
   port!: string;
 
-  @Column({ default: "git",enum:[ "zip", "git" ] })
-  source_type!: string  
+  @Column({ default: "git", enum: ["zip", "git"] })
+  source_type!: string
 
-  @Column("simple-array", { default: "",  nullable: true})
+  @Column("simple-array", { default: "", nullable: true })
   custom_domains!: string[]
 
-  @OneToMany(() => FileEntity, (file) => file.application, { cascade: ['remove'], nullable: true })
-  files!: FileEntity[];
+  @OneToOne(() => FileEntity, (file) => file.application, { cascade: ['remove'], nullable: true })
+  file!: FileEntity;
 
   @Column()
   selectedBuilder!: string;
@@ -66,17 +69,17 @@ export class ApplicationEntity extends CommonEntity {
   @Column({ type: "json" })
   commands!: Commands;
 
-  @OneToMany(() => DeploymentLogEntity, (log) => log.application, { nullable: true, cascade: ['remove'], })
-  logs!: DeploymentLogEntity[];
-
-  @OneToMany(() => WebhookEntity, (webhook) => webhook.applicationId, { nullable: true })
+  @OneToMany(() => WebhookEntity, (webhook) => webhook.applicationId, { nullable: true,cascade: ['remove'], })
   webhooks!: WebhookEntity[];
 
   @ManyToOne(() => ProjectsEnitity, (project) => project.applications)
   @JoinTable()
   project!: Relation<ProjectsEnitity>;
 
-  @OneToMany(() => DeploymentTrackerEntity, (webhook) => webhook.application, { nullable: true })
-  deployment_events!: DeploymentTrackerEntity[];
+  @OneToMany(() => DeploymentTrackerEntity, (webhook) => webhook.application, { nullable: true,cascade: ['remove'], eager: true })
+  deployments!: DeploymentTrackerEntity[];
+
+  @OneToMany(() => ContainerEntity, (container) => container.application,{ nullable: true, cascade: ['remove'], })
+  containers!: ContainerEntity[];
 }
 

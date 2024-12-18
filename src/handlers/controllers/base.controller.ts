@@ -73,18 +73,16 @@ class BaseController implements OnAppStart, OnAppShutDown {
                 "truncated": files.truncated,
                 "mimetype": files.mimetype,
                 "md5": files.md5,
+                uploadPath,
+                filePath
             }
 
-            await fileOps.extractZip(uploadPath, filePath)
-            const appType = await func.detectApplicationType(filePath)
+           
 
             res.json({
                 success: true,
                 message: "Files Uploaded Successfully",
-                result: {
-                    fileInfo: { ...createInfo, file_path: filePath },
-                    appType
-                }
+                result: createInfo
             })
             res.end();
 

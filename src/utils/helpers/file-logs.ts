@@ -2,7 +2,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeF
 import moment from 'moment';
 import { join } from 'path';
 
-const LOG_DIR = join(process.cwd(), "logs")
+export const LOG_DIR = join(process.cwd(), "logs")
 
 export const SAVE_LOGS = new Map<string, string>()
 // Enum for log levels
