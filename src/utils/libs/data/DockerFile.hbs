@@ -10,15 +10,6 @@ COPY . .
 
 RUN {{BUILD}}
 
-FROM {{NODE_VERSION}}-alpine AS production
-
-WORKDIR /app
-
-COPY --from=builder /app/build ./build
-COPY --from=builder /app/package*.json ./
-
-RUN {{{INSTALL}}}
-
 EXPOSE {{PORT}}
 
 CMD {{{START}}}

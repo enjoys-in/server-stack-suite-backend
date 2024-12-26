@@ -1,23 +1,25 @@
- 
+
 import { AuthProvidersList, IAuthProvider } from "@/utils/interfaces/providers.interfac";
 import { GoogleAuthProvider } from "./provider/GoogleAuthProvider ";
+import { GithubAuthProvider } from "./provider/GithubAuthProvider";
 
 export class AuthProviderFactory {
+  private static _authProviders: Record<string, IAuthProvider> = {}
+  private static _sessions: Record<string, string> = {}
   static createProvider(
     providerName: AuthProvidersList,
     clientId: string,
     clientSecret: string,
     redirectUri: string
-  ): IAuthProvider
-   {
+  ): IAuthProvider {
     providerName = providerName.toLowerCase() as AuthProvidersList
+    this.validateInputs(clientId, clientSecret, redirectUri);
+
     switch (providerName) {
       case "google":
-        this.validateInputs(clientId, clientSecret, redirectUri);
         return new GoogleAuthProvider(clientId, clientSecret, redirectUri);
       case "github":
-        this.validateInputs(clientId, clientSecret, redirectUri);
-        return new GoogleAuthProvider(clientId, clientSecret, redirectUri);
+        return new GithubAuthProvider(clientId, clientSecret, redirectUri);
       default:
         throw new Error(`Provider ${providerName} not supported.`);
     }
@@ -39,5 +41,11 @@ export class AuthProviderFactory {
     if (!redirectUrlRegex.test(redirectUri)) {
       throw new Error("Redirect URI is not a valid URL.");
     }
+  }
+  static providerStore() {
+    return this._authProviders;
+  }
+  static authSessions() { 
+    return this._sessions;
   }
 }

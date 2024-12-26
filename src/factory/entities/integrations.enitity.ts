@@ -1,7 +1,7 @@
-import { Entity, Column, JoinColumn, Relation, OneToOne } from "typeorm";
-import { ApplicationEntity } from "./application.entity";
+import { Entity, Column, JoinColumn,  ManyToOne, Relation } from "typeorm";
 import { CommonEntity } from "./common";
-import { IntegrationsType } from "@/utils/interfaces/deployment.interface";
+import { IntegrationMetadata, IntegrationsProviderCredType, IntegrationsProviderType } from "@/utils/interfaces/deployment.interface";
+import { UserEntity } from "./users.entity";
 
 @Entity("integrations")
 export class IntegrationsEntity extends CommonEntity {
@@ -9,19 +9,20 @@ export class IntegrationsEntity extends CommonEntity {
   @Column()
   name!: string;
 
-  @Column({nullable:true})
-  description!: string;
-
-  @Column()
+  @Column({ enum: IntegrationsProviderType })
   provider!: string;
 
-  @Column({enum:IntegrationsType})
-  type!: string;
+  @Column({ enum: IntegrationsProviderCredType })
+  access_type!: string;
 
   @Column('jsonb')
-  metadata!: Record<any, any>;
+  metadata!:Partial<IntegrationMetadata>;
 
-  @Column({default:false})
+  @Column({ default: false })
   is_active!: boolean;
+
+  @ManyToOne(() => UserEntity, (user) => user.integrations, { cascade: true })
+  @JoinColumn()
+  user!: Relation<UserEntity>;
 
 }

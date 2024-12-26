@@ -46,11 +46,26 @@ function handleAuthorization(
     }
 }
 
-export function PublicRoute(): MethodDecorator {
-    return (target, propertyKey, descriptor) => {
+export function PublicRoute(): ClassDecorator & MethodDecorator {
+    return (target: any, propertyKey?: string | symbol, descriptor?: TypedPropertyDescriptor<any>) => {
+      if (descriptor) {
+        // If descriptor is present, the decorator is applied to a method
         Reflect.defineMetadata(PUBLIC_ROUTE_KEY, true, descriptor.value!);
+      } else {
+        // If descriptor is not present, the decorator is applied to a class
+        const classPrototype = target.prototype;
+        const methodNames = Object.getOwnPropertyNames(classPrototype).filter(
+          (name) => typeof classPrototype[name] === 'function' && name !== 'constructor'
+        );
+  
+        // Apply metadata to all methods in the class
+        methodNames.forEach((methodName) => {
+          const method = classPrototype[methodName];
+          Reflect.defineMetadata(PUBLIC_ROUTE_KEY, true, method);
+        });
+      }
     };
-}
+  }
 
 /**
  * Decorator function that checks if the user has the required roles to access a protected route.

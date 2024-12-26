@@ -1,7 +1,7 @@
 import axios from "axios";
 import { AbstractOAuth2Provider } from "../abstract";
-
-export class GithuAuthProvider extends AbstractOAuth2Provider {
+import helpers from "@/utils/helpers";
+export class GithubAuthProvider extends AbstractOAuth2Provider {
     getAuthUrl(): string {
         const baseUrl = "https://github.com/login/oauth/authorize";
         const scope = "repo";
@@ -18,4 +18,10 @@ export class GithuAuthProvider extends AbstractOAuth2Provider {
         });
         return data as T;
     }
+    async refreshToken<T>(refresh_token: string): Promise<T> {    
+        const queryString =  `client_id=${this.clientId}&client_secret=${this.clientSecret}&grant_type=refresh_token&refresh_token=${refresh_token}`  
+        const { data } = await axios.post("https://github.com/login/oauth/access_token?"+queryString );
+        return data as T;
+    }
 }
+

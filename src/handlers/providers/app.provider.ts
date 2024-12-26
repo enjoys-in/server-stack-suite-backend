@@ -3,12 +3,12 @@ import { SSLCertificatesEnitity } from "@/factory/entities/ssl_certificates.enti
 import { UserEntity } from "@/factory/entities/users.entity"
 import { InjectRepository } from "@/factory/typeorm"
 import utils from "@/utils"
-import { docker } from "@/utils/helpers/docker"
 import { Repository } from "typeorm"
 import { exec } from 'child_process';
 import * as fs from 'fs'
 import { InitLogs } from "@/utils/helpers/file-logs"
 import { join } from "path"
+import { ContainerEntity } from "@/factory/entities/container.entity"
 
 let idCounter = 1;
 
@@ -16,23 +16,21 @@ class AppService {
     private readonly userRepo: Repository<UserEntity>
     private readonly sslRepo: Repository<SSLCertificatesEnitity>
     private readonly hostRepo: Repository<HostsEnitity>
+    private readonly containerRepo: Repository<ContainerEntity>
     constructor() {
         this.userRepo = InjectRepository(UserEntity)
         this.sslRepo = InjectRepository(SSLCertificatesEnitity)
         this.hostRepo = InjectRepository(HostsEnitity)
+        this.containerRepo = InjectRepository(ContainerEntity)
 
     }
     async getAnalytics() {
-        const containers = await docker.ping().then(async () => {
-            return (await docker.listContainers({ all: true })).length
-        }).catch(() => {
-            return 0
-        })
+        
         return {
             totalUsers: await this.userRepo.count(),
             totalHosts: await this.hostRepo.count(),
             totalSslCertificates: await this.sslRepo.count(),
-            containers,
+            containers:await this.containerRepo.count(),
         }
     }
     async create(createUserDto: any): Promise<UserEntity> {

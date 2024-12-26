@@ -49,13 +49,12 @@ const InitSocketConnection = (server?: HttpServer) => {
     // Listen for docker Shell events
     socket.on(SOCKET_EVENTS.CONTAINER_SHELL_START, async (data: string) => {
       const container = containersService.getContainer(data);
-      const shell = await container.exec({
-        //   Cmd: ["bash", "-c", "echo $SHELL"],
+      const shell = await container.exec({        
         AttachStdout: true,
         AttachStderr: true,
         AttachStdin: true,
         Tty: true,
-        Cmd: ["/bin/bash"],
+        Cmd: ["/bin/sh"],
       });
       const stream = await shell.start({ hijack: true, stdin: true });
       socket.on(SOCKET_EVENTS.CONTAINER_SHELL_MESSAGE, (msg) => stream.write(msg));

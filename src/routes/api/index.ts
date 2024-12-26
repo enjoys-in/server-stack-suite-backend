@@ -68,14 +68,17 @@ router.delete("/project/:id", ProjectController.default.deleteProject)
 // Application Deploy Rouetes
 router.get("/application/:id", ApplicationController.default.getApplication)
 router.get("/has-application/:id", ApplicationController.default.checkExistApplication)
-// router.get("/application/:id/health", ApplicationController.default.getApplicationHealth) // Health check
 router.post("/application", ApplicationController.default.deployNewApplication)
+router.post("/application/health-check", ApplicationController.default.addHealthCheck)
 router.put("/application/:id", ApplicationController.default.updateApplicationMetadata)
 router.delete("/application/:id", ApplicationController.default.deleteApplication)
 router.post("/application-redeploy", ApplicationController.default.reDeployApplication)
 router.get("/stop-deployment/:application_id", ApplicationController.default.stopTheDeployement)
-router.get("/container/files/:application_id/:container_tag", ContainerController.default.getContainerFiles)
-
+// Container Routes
+router.get("/container/files/:container_tag", ContainerController.default.getContainerFiles)
+router.get("/container/info/:container_tag", ContainerController.default.getContainerInfo)
+router.get("/container/logs/:container_tag", ContainerController.default.getContainerLogs)
+// Deployments Routes
 router.get("/deployments/events/:application_id", ApplicationController.default.getDepoymentEvents)
 router.get("/deployments/logs/:deployment_id", ApplicationController.default.deploymentLogs)
 router.get("/connect/:namespace", ApplicationController.default.getLiveTailLogs)

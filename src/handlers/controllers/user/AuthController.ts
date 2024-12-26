@@ -34,14 +34,15 @@ class AuthController {
     @PublicRoute()
     async Login(req: Request, res: Response) {
         try {
-            const { email, password } = req.body
+            const { username, password } = req.body
             const isUser = await InjectRepository(UserEntity).findOne({
-                where: { email },
+                where: { email:username },
+                select:["name", "email", "password", "id", "isfirstlogin"]
             })
             if (!isUser) {
                 throw new Error('Invalid credentials')
             }
-            if (!utils.ComparePassword(isUser.password, password)) {
+            if (!(await utils.ComparePassword(isUser.password, password))) {
                 throw new Error('Invalid credentials')
             }
              const user = {

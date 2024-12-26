@@ -3,9 +3,7 @@ import { CommonEntity } from "./common";
 import { ApplicationEntity } from "./application.entity";
 import { DeploymentTrackerEntity } from "./deploymen_tracker.entity";
 import { ContainerStatus } from "@/utils/interfaces/deployment.interface";
-
-
-
+ 
 @Entity("containers")
 export class ContainerEntity extends CommonEntity {
     @Column()

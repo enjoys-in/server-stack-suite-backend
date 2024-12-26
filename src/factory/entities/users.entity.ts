@@ -5,6 +5,7 @@ import { HostsEnitity } from './hosts.entity';
 import { USER_STATUS } from '@/utils/helpers/constants';
 import { DASHBOAD_CONFIG } from '@/utils/interfaces/user.interface';
 import { ProjectsEnitity } from './project.entity';
+import { IntegrationsEntity } from './integrations.enitity';
 
 
 
@@ -29,7 +30,7 @@ export class UserEntity extends CommonEntity {
     @Column({ default: false })
     isfirstlogin!: boolean;
 
-    @Column({ default: DASHBOAD_CONFIG.PROCESSING, enum:DASHBOAD_CONFIG })
+    @Column({ default: DASHBOAD_CONFIG.PROCESSING, enum: DASHBOAD_CONFIG })
     dashboard_config!: string;
 
     @Column('json', { nullable: true })
@@ -44,7 +45,9 @@ export class UserEntity extends CommonEntity {
 
     @OneToMany(() => ProjectsEnitity, (projects) => projects.created_by, { nullable: true, cascade: ["insert"], onDelete: "CASCADE", onUpdate: "NO ACTION" })
     project!: ProjectsEnitity[]
-    
+
+    @OneToMany(() => IntegrationsEntity, (integrations) => integrations.user, { nullable: true, cascade: ["insert"], onDelete: "CASCADE", onUpdate: "NO ACTION" })
+    integrations!: IntegrationsEntity[];
 
 
 }

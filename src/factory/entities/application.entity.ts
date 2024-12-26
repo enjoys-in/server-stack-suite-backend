@@ -3,9 +3,10 @@ import { FileEntity } from "./file.entity";
 import { CommonEntity } from "./common";
 import { WebhookEntity } from "./webhook.entity";
 import { ProjectsEnitity } from "./project.entity";
-import { ApplicationDeploymentStatus, Commands, DockerMetadata, Path } from "@/utils/interfaces/deployment.interface";
+import { ApplcationMetadata, ApplicationDeploymentStatus, Commands, DockerMetadata, Path } from "@/utils/interfaces/deployment.interface";
 import { DeploymentTrackerEntity } from "./deploymen_tracker.entity";
 import { ContainerEntity } from "./container.entity";
+import { HealthcheckEntity } from "./healthcheck.enitity";
 
 @Entity("applications")
 export class ApplicationEntity extends CommonEntity {
@@ -15,7 +16,7 @@ export class ApplicationEntity extends CommonEntity {
   @Column()
   application_description!: string;
 
-  @Column({default:""})
+  @Column({ default: "" })
   application_id!: string;
 
   @Column({ nullable: true })
@@ -56,6 +57,9 @@ export class ApplicationEntity extends CommonEntity {
 
   @Column("jsonb", { nullable: true, default: {} })
   docker_metadata!: DockerMetadata;
+  
+  @Column("jsonb", { nullable: true, default: {} })
+  metadata!: ApplcationMetadata;
 
   @Column()
   selectedRepo!: string;
@@ -69,17 +73,20 @@ export class ApplicationEntity extends CommonEntity {
   @Column({ type: "json" })
   commands!: Commands;
 
-  @OneToMany(() => WebhookEntity, (webhook) => webhook.applicationId, { nullable: true,cascade: ['remove'], })
+  @OneToMany(() => WebhookEntity, (webhook) => webhook.applicationId, { nullable: true, cascade: ['remove'], })
   webhooks!: WebhookEntity[];
 
   @ManyToOne(() => ProjectsEnitity, (project) => project.applications)
   @JoinTable()
   project!: Relation<ProjectsEnitity>;
 
-  @OneToMany(() => DeploymentTrackerEntity, (webhook) => webhook.application, { nullable: true,cascade: ['remove'], eager: true })
+  @OneToMany(() => DeploymentTrackerEntity, (webhook) => webhook.application, { nullable: true, cascade: ['remove'], eager: true })
   deployments!: DeploymentTrackerEntity[];
 
-  @OneToMany(() => ContainerEntity, (container) => container.application,{ nullable: true, cascade: ['remove'], })
+  @OneToMany(() => ContainerEntity, (container) => container.application, { nullable: true, cascade: ['remove'], })
   containers!: ContainerEntity[];
+
+  @OneToOne(() => HealthcheckEntity, (hc) => hc.application, { nullable: true, cascade: ['remove'], })
+  healthCheck!: HealthcheckEntity;
 }
 

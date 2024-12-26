@@ -1,12 +1,13 @@
 import { ApplicationEntity } from "@/factory/entities/application.entity";
 import { DeploymentTrackerEntity } from "@/factory/entities/deploymen_tracker.entity";
 import { FileEntity } from "@/factory/entities/file.entity";
+import { HealthcheckEntity } from "@/factory/entities/healthcheck.enitity";
 import { ProjectsEnitity } from "@/factory/entities/project.entity";
 import { WebhookEntity } from "@/factory/entities/webhook.entity";
 import { PartialType } from "@/utils/interfaces";
 import { Commands, EnvironmentVariable, Path, DockerMetadata } from "@/utils/interfaces/deployment.interface";
 
-export class CreateApplicaionDTO extends PartialType(ApplicationEntity) { 
+export class CreateApplicaionDTO extends PartialType(ApplicationEntity) {
     application_name!: string;
     application_description!: string;
     framework_preset!: string;
@@ -29,5 +30,11 @@ export class CreateApplicaionDTO extends PartialType(ApplicationEntity) {
     tags!: string[];
     selectedBuilder!: string;
     selectedRepo!: string
+}
+export class UpdateApplicaionCommand extends PartialType(HealthcheckEntity) {
+    path!: string;
+    application!:ApplicationEntity
+    is_maintainance_mode!: boolean;
+    is_active!: boolean;
 }
 export class UpdateApplicaionDTO extends PartialType(CreateApplicaionDTO) { }

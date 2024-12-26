@@ -31,26 +31,28 @@ class ContainerService {
         socket.emit(SOCKET_EVENTS.CONTAINER_LOGS, 'Error streaming logs');
       });
 
-      // Handle disconnection
       socket.on('disconnect', () => {
         logStream.unpipe();
-
       });
 
     } catch (error) {
       socket.emit(SOCKET_EVENTS.CONTAINER_LOGS, 'Failed to fetch logs');
     }
   }
+  async removeDockerImage(dockerImage: string) {
+    return docker.getImage(dockerImage).remove()
+  }
   async getContainerShell(container_tag: string, socket: Socket): Promise<any> {
     try {
+
       const container = this.getContainer(container_tag);
+
       const shell = await container.exec({
-        //   Cmd: ["bash", "-c", "echo $SHELL"],
         AttachStdout: true,
         AttachStderr: true,
         AttachStdin: true,
         Tty: true,
-        Cmd: ["/bin/bash"],
+        Cmd: ["/bin/sh"],
       });
       const stream = await shell.start({ hijack: true, stdin: true });
 
@@ -79,19 +81,19 @@ class ContainerService {
     return docker.listContainers();
   }
   createContainerImage(options: Partial<IDockerImageOptions>): Promise<any> {
-    let chunks =""
-    
+    let chunks = ""
+
     return new Promise((resolve, reject) => {
-      docker.createImage({ fromImage: 'node:22-alpine',cachefrom: ['node:22-alpine'],...options},(err:any, stream:any) => {
+      docker.createImage({ fromImage: 'node:22-alpine', cachefrom: ['node:22-alpine'], ...options }, (err: any, stream: any) => {
         if (err) {
-          
-          reject('Error creating image:'+ err);
+
+          reject('Error creating image:' + err);
         } else {
 
-          stream.on('data', (chunk:any) => {
-            chunks = chunk.toString()           
+          stream.on('data', (chunk: any) => {
+            chunks = chunk.toString()
           });
-          
+
           stream.on('end', () => {
             resolve(chunks)
           });
@@ -99,7 +101,7 @@ class ContainerService {
       })
     })
   }
-  deleteContainer(containerId: string){
+  deleteContainer(containerId: string) {
     return this.getContainer(containerId).remove();
   }
   getContainer(containerId: string): Container {
@@ -108,8 +110,22 @@ class ContainerService {
   getContainerByName(name: string): Container {
     return docker.getContainer(name);
   }
-  getContainerStats(name: string): any {
-    return this.getContainer(name).stats();
+  getContainerStats(name: string,socket:any): any {
+    return this.getContainer(name).stats({
+      stream: true,
+    }, (error, stats) => {
+      if (error) {
+        throw error;
+      }       
+      stats?.on("data", (data) => {
+        socket.emit(SOCKET_EVENTS.CONTAINER_STATS, data.toString());        
+      })
+      socket.on(SOCKET_EVENTS.CONTAINER_STATS_STOP, ()=>{
+       stats?.unpipe()       
+      
+      });        
+      return stats;
+    });
   }
   inspectContainer(name: string): any {
     return this.getContainer(name).inspect();
@@ -144,7 +160,7 @@ class ContainerService {
   async createContainer(options: DockerCreateContainerOptions): Promise<Container> {
 
     return docker.createContainer({
-      Cmd: ["bash", "-c", "echo $SHELL"],
+      // Cmd: ["sh"],
       WorkingDir: "/app",
       ...options
     });

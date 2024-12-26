@@ -31,7 +31,7 @@ export class SystemOperations {
     child.kill()
     return child
   }
-  static async executeCommand(command: string, args: string[]): Promise<{ stdout: string, stderr: string }> {
+  static async executeCommand(command: string, args?: string[]): Promise<{ stdout: string, stderr: string }> {
     return new Promise((resolve, reject) => {
       const process = spawn(command, args, { shell: true, });
 

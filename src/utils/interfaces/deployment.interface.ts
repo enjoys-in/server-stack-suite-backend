@@ -57,7 +57,10 @@ export interface DockerMetadata {
   network?: string
 
 }
-
+export interface ApplcationMetadata {
+  is_repo_private?: boolean
+  is_zip_file?: boolean
+}
 export interface Path {
   main_directory: string
   root_directory: string
@@ -73,8 +76,8 @@ export interface Commands {
 export enum ApplicationDeploymentStatus {
   PROVISIONING = "PROVISIONING",
   BUILDING = "BUILDING",
-  DEPLOYING = "DEPLOYING", 
-  DEPLOYED = "DEPLOYED",  
+  DEPLOYING = "DEPLOYING",
+  DEPLOYED = "DEPLOYED",
   FAILED = "FAILED",
   RUNNING = "RUNNING",
 
@@ -112,8 +115,26 @@ export interface DeploymentResult {
   success: boolean;
   message: string;
 }
-export enum IntegrationsProviderType{
-  DOCKER_HUB = "DOCKER_HUB",
+export interface IntegrationMetadata {
+  client_id: string;
+  client_secret: string;
+  redirect_url: string;
+  app_id: string;
+  webhook_secret: string;
+  private_key: string;
+  provider: "GITHUB" | "GITLAB" | "BITBUCKET";
+  access_type: "SSO" | "TOKEN";
+}
+export enum IntegrationsProviderCredType {
+  TOKEN = "TOKEN",
+  SSO = "SSO",
+}
+export enum IntegrationsProviderType {
+  GITHUB = "GITHUB",
+  BITBUCKET = "BITBUCKET",
+  GITLAB = "GITLAB",
+}
+export enum Services {
   GITHUB = "GITHUB",
   BITBUCKET = "BITBUCKET",
   GITEA = "GITEA",
@@ -124,19 +145,17 @@ export enum IntegrationsProviderType{
   AZURE = "AZURE",
   CLOUDFLARE = "CLOUDFLARE",
   HEROKU = "HEROKU",
-  DIGITAL_OCEAN = "DIGITAL_OCEAN",  
+  DIGITAL_OCEAN = "DIGITAL_OCEAN",
 }
- 
-export type IntegrationsProviderBody = { 
-  [key in IntegrationsProviderType ]: string;
+export type IntegrationsProviderBody = {
+  [key in IntegrationsProviderType]: string;
 
 }
 export enum IntegrationsType {
-  SERVER= "SERVER",
+  SERVER = "SERVER",
   APP = "APP",
   STORAGE = "STORAGE",
   DATABASE = "DATABASE"
-
 }
 type OngoingDeploymentStatus = "build" | "in-progress" | "cancelled" | "failed";
 export enum ContainerStatus {
@@ -147,7 +166,7 @@ export enum ContainerStatus {
 export enum DeploymentStatus {
   PENDING = "PENDING",
   BUILDING = "BUILDING",
-  DEPLOYING = "DEPLOYING",  
+  DEPLOYING = "DEPLOYING",
   STOPPED = "STOPPED",
   ACTIVE = "ACTIVE",
   FAILED = "FAILED",

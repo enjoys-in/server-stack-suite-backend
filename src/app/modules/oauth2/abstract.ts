@@ -15,4 +15,6 @@ export abstract class AbstractOAuth2Provider implements IAuthProvider {
     abstract getAuthUrl(): string;
 
     abstract handleCallback<T>(code: string): Promise<T>;
+    abstract refreshToken<T>(code: string): Promise<T>
+
 }

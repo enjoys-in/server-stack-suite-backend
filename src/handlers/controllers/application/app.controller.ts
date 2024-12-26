@@ -1,13 +1,12 @@
 import type { Request, Response } from "express";
 import applicationService from "./application.service";
 import deploymentService from "./deployment.service";
-import { ApplicationDeployment } from "@/utils/interfaces/deployment.interface";
 import { AppEvents } from "@/utils/services/Events";
 import { EVENT_CONSTANTS } from "@/utils/helpers/events.constants";
 import { OnEvent } from "@/utils/decorators";
 import { USER_STORE } from "@/utils/services/sockets/Sockets";
 import { LogsProvider } from "@/handlers/providers/logs.provider";
-import { existsSync, unlinkSync, writeFileSync } from "fs";
+import { existsSync, unlinkSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
 import { CreateApplicaionDTO } from "./dto/application.dto";
@@ -103,10 +102,10 @@ class ApplicationController {
         throw new Error(`Application not found`)
       }
       if (application.selectedBuilder === "direct") {
-        execSync(`pm2 delete ${application.application_name}::${application.id}`)
         execSync(`rm -rf ${join(application.project.project_path, application.application_name)}`)
+        execSync(`pm2 delete ${application.application_name}::${application.id}`)
       } else {
-        console.log(application.containers)
+
         // containersService.getContainer(application.containers.pop()?.name)
         // await containersService.deleteContainer(application.application_name)
       }
@@ -160,7 +159,7 @@ class ApplicationController {
       const directory = application.project.project_path
       let pathWhereRepoToBeCloned = `${directory}/${appName}`
 
- 
+
       // res.json({ success: true, message: "Deployment initiated.", result:  await deploymentService.testDocker(appIntance) })
 
       // if (appIntance.id) {
@@ -259,7 +258,6 @@ class ApplicationController {
       const nsp = req.io!.of(`/${namespace}`);
       nsp.on('connection', (socket) => {
         let logStream: any;
-        // await this.executeCommand(`pm2 logs ${container_name}::${applicationId}`, socketId, deployment.id, "Processing logs")             
 
         socket.on(SOCKET_EVENTS.CONTAINER_LOGS_START, async (containerId) => {
           try {
@@ -301,6 +299,24 @@ class ApplicationController {
         });
       })
       res.json({ success: true, message: "Uploading logs", result: {} }).end()
+    } catch (error: any) {
+      if (error instanceof Error) {
+        res.json({ message: error.message, result: null, success: false })
+        return;
+      }
+      res.json({ message: "Something went wrong", result: null, success: false })
+    }
+  }
+  async addHealthCheck(req: Request, res: Response) {
+    try {
+      const body = req.body as {
+        path: string;
+        application_id: string;
+        is_maintainance_mode: boolean;
+        is_active: boolean;    }
+    
+      await applicationService.addApplicationHealthCheck(body)
+      res.json({ success: true, message: "Health Check Addded", result: {} }).end()
     } catch (error: any) {
       if (error instanceof Error) {
         res.json({ message: error.message, result: null, success: false })

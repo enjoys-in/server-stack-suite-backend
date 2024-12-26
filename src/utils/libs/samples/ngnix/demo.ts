@@ -5,11 +5,53 @@ type PrepareData = {
     [key in keyof CustomOptions]: string | ""
 }
 export class NginxSample {
+
     private static forceHttpsRedirection(host: string = "$host") {
         return `return 301 https://${host}$request_uri;`
     }
     private static ipWhitelist(ip: string[]) {
 
+    }
+      
+    static healthCheck(host: string , timeout: number = 2000) {
+        return `
+        location /healthz {
+            content_by_lua_block {
+                local http = require("resty.http")
+                local httpc = http.new()
+                local cjson = require("cjson")
+
+                -- Get the current time
+                local current_time = os.date("!%Y-%m-%dT%H:%M:%SZ") -- ISO 8601 format
+
+                -- Check backend health
+                local res, err = httpc:request_uri("${host}", {
+                    method = "HEAD",  -- Use HEAD to check connectivity
+                    timeout = ${timeout}    -- 2 seconds timeout
+                })
+
+                if not res or res.status ~= 200 then
+                    ngx.status = 500
+                    ngx.say(cjson.encode({
+                        success = false,
+                        message = "Not Healthy",
+                        result = {
+                            time = current_time
+                        }
+                    }))
+                    return
+                end
+
+                ngx.say(cjson.encode({
+                    success = true,
+                    message = "Healthy",
+                    result = {
+                        time = current_time
+                    }
+                }))
+            }
+        }
+        `
     }
     static ErrorPages() {
         return `
@@ -120,17 +162,19 @@ export class NginxSample {
     
                 }
                 # {location}
+ 
+                # {health_check}
             }
         `
     }
 
-    static ReactHTMLApplication(server_name: string[], path: string) {
+    static ReactHTMLApplication(server_name: string[], file_path: string) {
         return `
         server {
                 listen 80;
                 listen [::]:80;
 
-                root /var/www/your_domain/html;
+                root ${file_path};
                 index index.html index.htm index.nginx-debian.html;
 
                 server_name ${server_name.join(' ')};
@@ -145,26 +189,23 @@ export class NginxSample {
         return `
         server {
                 listen 80;
-                listen [::]:80;
-
-                root /var/www/your_domain/html;
-                index index.html index.htm index.nginx-debian.html;
+                listen [::]:80;                
 
                 server_name ${server_name.join(' ')};
 
                 location / {
-                         
+                       proxy_pass ${path};    
                 }
         }
         `
     }
-    static NextOutApplication() {
+    static NextOutApplication(server_name: string[], path: string="/", proxy_pass: string) {
         return `
      server {
                 listen 80 default_server;
                 listen [::]:80;
                 
-                server_name www.DOMAINNAME.com DOMAINNAME.com;
+                server_name ${server_name.join(' ')};
 
                 index index.html index.htm;
                 root /home/ubuntu/PROJECT_FOLDER; #Make sure your using the full path
@@ -175,7 +216,7 @@ export class NginxSample {
                     add_header Cache-Control "public, max-age=3600, immutable";
                 }
 
-                location / {
+                location ${path} {
                     try_files $uri.html $uri/index.html # only serve html files from this dir
                     @public
                     @nextjs;
@@ -188,7 +229,7 @@ export class NginxSample {
 
                 location @nextjs {
                     # reverse proxy for next server
-                    proxy_pass http://localhost:8080; #Don't forget to update your port number
+                    proxy_pass ${path}; 
                     proxy_http_version 1.1;
                     proxy_set_header Upgrade $http_upgrade;
                     proxy_set_header Connection 'upgrade';

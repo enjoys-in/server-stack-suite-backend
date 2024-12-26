@@ -13,37 +13,8 @@ const IV_LENGTH = 16;
  * Use CryptoJS for more advanced encryption and decryption. Visit https://www.npmjs.com/package/crypto-js
 */
 export class Security {
-
-    /**
-     * Generates a salt value for password hashing using the bcrypt library.
-     *
-     * @param {number} [saltRounds=10] - The number of rounds to use for generating the salt.
-     * @return {string} The generated salt value.
-     */
-    private static generateSalt(saltRounds = 10): string {
-        return bcrypt.genSaltSync(saltRounds)
-    }
-    /**
-     * Asynchronously encrypts a password using bcrypt.
-     *
-     * @param {string} Password - The password to be encrypted.
-     * @return {Promise<string>} A promise that resolves to the encrypted password.
-     */
-    static async EncryptPassword(Password: string): Promise<string> {
-        const salt = this.generateSalt()
-        return bcrypt.hashSync(Password, salt)
-    }
-    /**
-     * Asynchronously decrypts a password using bcrypt.
-     *
-     * @param {string} Password - The password to be decrypted.
-     * @param {string} HashedPassword - The hashed password to compare against.
-     * @return {Promise<boolean>} A promise that resolves to true if the password matches the hashed password, false otherwise.
-     */
-    static async ComparePassword(Password: string, HashedPassword: string): Promise<boolean> {
-        const match = await bcrypt.compare(Password, HashedPassword);
-        return match
-    }
+  
+    
     /**
      * Asynchronously generates an encryption object with `Encrypt` and `Decrypt` methods.
      *
@@ -92,16 +63,16 @@ export class Security {
      * - `EncryptToString`: Encrypts the data and returns it as a string.
      * - `DecryptFromString`: Decrypts the data from a string and returns it as a string.
      */
-    EncryptDecryptData(data: any, secret?: string) {
+    EncryptDecryptData() {
         return {
-            EncryptToString: () => {
+            EncryptToString: (data: any, secret?: string) => {
                 if (typeof data === "object") {
                     data = JSON.stringify(data);
                 }
                 return CryptoJS.AES.encrypt(data, secret || ENCRYPTION_KEY).toString();
             },
-            DecryptFromString: () => {
-                return CryptoJS.AES.decrypt(data, secret || ENCRYPTION_KEY).toString();
+            DecryptFromString: (data: any, secret: string) => {
+                return CryptoJS.AES.decrypt(data, secret || ENCRYPTION_KEY).toString(CryptoJS.enc.Utf8);
             }
         }
     }

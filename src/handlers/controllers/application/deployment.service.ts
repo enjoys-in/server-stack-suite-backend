@@ -206,24 +206,19 @@ class DepploymentService {
                     // stop the container
                     if (container.container_status === ContainerStatus.RUNNING || container.is_primary) {
                         {
-
                             await containersService.getContainer(container.name).stop()
                             await containerRepository.update({ id: container.id, }, {
                                 container_status: ContainerStatus.STOPPED,
                                 stopped_at: new Date().toISOString(),
-                                is_primary: false,
-                                application: {
-                                    id: application.id,
-                                }
-                            })
+                                is_primary: false,                               
+                            })                              
                         }
                     }
                 })
                 const container = await containersService.createContainer({
                     Image: `${application.application_id}_img:latest`,
                     name: container_name,
-                    Env: application.environment_variables.map(env => `${env.key}=${env.value}`),
-
+                    Env: application.environment_variables.map(env => `${env.key}=${env.value}`),                  
                     HostConfig: {
                         PortBindings: {
                             [`${application.port}/tcp`]: [
@@ -231,7 +226,6 @@ class DepploymentService {
                                     HostIp: "0.0.0.0",
                                     HostPort: `${application.port}`,
                                 },
-
                             ]
                         }
                     },
@@ -240,12 +234,13 @@ class DepploymentService {
 
 
                 const inspect = await containersService.getContainer(container_name).inspect()
-                containersService.getContainerLogs(container_name, logService.socket().sockets)
+                await containersService.getContainerLogs(container_name, logService.socket().sockets)
                 deployment.container_name = container.id
                 await deploymentTrackerRepo.save(deployment)
+
                 const containerInstance = await containerRepository.save({
                     image: `${application.application_id}_img:latest`,
-                    name: container.id,
+                    name: container.id.substring(0,12),
                     application: {
                         id: application.id,
                     },
@@ -257,7 +252,7 @@ class DepploymentService {
                     is_primary: true,
                 })
                 ci.id = containerInstance.id
-                application.containers = [ci]
+                application.containers = [...application.containers,ci]
                 await container.start()
             }
 
@@ -431,8 +426,8 @@ class DepploymentService {
             START: (application.commands.start_command || "npm run start").split(' '),
             NODE_VERSION: "node:22",
         })
-
-        const dockerBuildCommand = `cd ${pathWhereRepoToBeCloned} && docker build  . -t ${application.application_id}_img:latest -f Dockerfile`;
+      
+        const dockerBuildCommand = `cd ${pathWhereRepoToBeCloned} && docker build  . -t ${application.application_id}_img:latest -f Dockerfile  --no-cache`;
 
 
         // if (application.docker_metadata?.ports) {
