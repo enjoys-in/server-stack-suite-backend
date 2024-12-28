@@ -1,16 +1,35 @@
 import Dockerode, { Container } from "dockerode";
 import { SOCKET_EVENTS } from "@/utils/services/sockets/socketEventConstants";
 import { Socket } from "socket.io";
-import { DockerCreateContainerOptions } from "@/utils/interfaces/deployment.interface";
+import { ContainerStatus, DockerCreateContainerOptions } from "@/utils/interfaces/deployment.interface";
 import { IDockerImageOptions } from "@/utils/interfaces/docker.interface";
+import { InjectRepository } from "@/factory/typeorm";
+import { ContainerEntity } from "@/factory/entities/container.entity";
+import { FindOptionsWhere } from "typeorm";
 const options = { socketPath: "/var/run/docker.sock" }
 
 const docker = new Dockerode()
-
+const containerRepository = InjectRepository(ContainerEntity)
 
 
 class ContainerService {
 
+  getAllContainers() {
+    return containerRepository.findAndCount()
+  }
+  getAllContainerByAppId(appId: string, isRunning?: boolean | "all") {
+    if (isRunning === "all") {
+      return containerRepository.findOne({ where: { application: { id: +appId } } });
+    }
+    return containerRepository.find({ where: { application: { id: +appId } } });
+  }
+  getOneRunningContainerByAppId(appId: string, isRunning: boolean) {
+    return containerRepository.findOne({ where: { application: { id: +appId }, is_primary: isRunning,} });
+  }
+
+  updateContainerStatus(where: FindOptionsWhere<ContainerEntity>, metadata:Partial<ContainerEntity>) {
+    return containerRepository.update(where,metadata );
+  }
   async getContainerLogs(container_tag: string, socket: any): Promise<any> {
 
     try {
@@ -110,20 +129,20 @@ class ContainerService {
   getContainerByName(name: string): Container {
     return docker.getContainer(name);
   }
-  getContainerStats(name: string,socket:any): any {
+  getContainerStats(name: string, socket: any): any {
     return this.getContainer(name).stats({
       stream: true,
     }, (error, stats) => {
       if (error) {
         throw error;
-      }       
+      }
       stats?.on("data", (data) => {
-        socket.emit(SOCKET_EVENTS.CONTAINER_STATS, data.toString());        
+        socket.emit(SOCKET_EVENTS.CONTAINER_STATS, data.toString());
       })
-      socket.on(SOCKET_EVENTS.CONTAINER_STATS_STOP, ()=>{
-       stats?.unpipe()       
-      
-      });        
+      socket.on(SOCKET_EVENTS.CONTAINER_STATS_STOP, () => {
+        stats?.unpipe()
+
+      });
       return stats;
     });
   }

@@ -22,6 +22,7 @@ import hbs from "handlebars";
 import toml from 'toml'
 import { uniqueNamesGenerator,Config,adjectives,animals ,colors,countries ,names,languages,starWars  } from 'unique-names-generator';
 import { subdomainPortMap } from "@/middlewares/proxy.middleware";
+import { CONFIG } from "@/app/config";
 const config: Config = {
     separator: '-',
     seed: 120498,
@@ -193,10 +194,10 @@ class DepploymentService {
             const ci = new ContainerEntity()
 
             if (application.selectedBuilder === "direct") {
-                const uniqueAppId = application.application_id
+                const uniqueAppId =  `${application.application_id}::${deployment.id}`
                 const startCommand = COMMANDS.PM2.ADD_APP
                     .replace('{startScript}', application.commands.start_command)
-                    .replace('{tag}', `${uniqueAppId}::${applicationId}`)
+                    .replace('{tag}',uniqueAppId)
                 const now = new Date();
                 const date = formatDate(now);
                 const logPath = path.join(LOG_DIR, `${date}.log`);
@@ -204,7 +205,15 @@ class DepploymentService {
 
                 await this.executeCommand(`${startCommand} --log ${logPath}`, socketId, deployment.id, "Application started successfully", `${application.project.project_path}/${app_name}`)
                 logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.RUNNING)
-                await appRepository.update({ id: +applicationId }, { status: ApplicationDeploymentStatus.RUNNING });
+                await appRepository.update({ id: +applicationId },
+                     { status: ApplicationDeploymentStatus.RUNNING,
+                        metadata:{
+                            ...application.metadata,
+                            application_deployment_name:uniqueAppId
+                        }
+                        
+
+                      });
                 await this.executeCommand(`pm2 save`, socketId, deployment.id, "Backup Created")
 
             } else {
@@ -271,15 +280,19 @@ class DepploymentService {
 
 
             application.status = ApplicationDeploymentStatus.RUNNING;
-            const tempDomain = uniqueNamesGenerator(config)
-            subdomainPortMap[tempDomain] = +application.port
-            application.selected_domain =  `http://${tempDomain}.localhost:${application.port}`
+            const tempSubDomain = uniqueNamesGenerator(config)
+            subdomainPortMap[tempSubDomain] = +application.port
+            const tempDomain=`https://${tempSubDomain}.${CONFIG.APP.APP_DOMAIN}`
+            application.selected_domain =  tempDomain
+            application.custom_domains = [...application.custom_domains,tempDomain]
             await appRepository.save(application);
             logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.RUNNING)
 
             delete deploymentTracker[`app::${applicationId}`]
             deployment.status = DeploymentStatus.ACTIVE
+            deployment.ended_at = new Date().toISOString()
             await deploymentTrackerRepo.save(deployment)
+            logService.emitLog(socketId, deployment.id, `Custom Domain Assigned ${tempDomain}`, "info");
             logService.emitLog(socketId, deployment.id, `Application Running Successfully... http://localhost:${application.port}`, "info");
 
         } catch (error: any) {
@@ -639,7 +652,10 @@ pimple.json
         };
         return customVariablesJson;
     }
-
+    emitEvent(eventName: string,message: string): void {
+        logService.socket().emit(eventName, message)
+    }
+    
 }
 
 export default new DepploymentService();

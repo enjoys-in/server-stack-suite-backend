@@ -22,6 +22,7 @@ import { Modifiers } from './app/common/Modifiers';
 import cors from 'cors'
 import { EventsListeners } from './utils/services/events-listeners';
 import fileUpload from 'express-fileupload';
+import { join } from 'path';
 const io = getSocketIo()
 
 
@@ -67,7 +68,29 @@ class AppServer {
         AppServer.App.use(SessionHandler.forRoot());
         AppServer.App.use(cookieParser(CONFIG.SECRETS.SESSION_SECRET));
         AppServer.App.use(bodyParser.urlencoded({ extended: false }));       
-        
+        this.MakeAssetsPublic()
+    }
+    /**
+     * Configures the Express application to serve static assets.
+     *
+     * Sets up a route to serve static files from the 'uploads' directory under the '/public' path.
+     * The function configures various options for serving static files, such as ignoring dotfiles,
+     * disabling etag, setting file extensions, and setting cache max age to 1 day. Additionally,
+     * a custom header with a timestamp is added to each response.
+     */
+    private MakeAssetsPublic() {
+        const options = {
+            dotfiles: 'ignore',
+            etag: false,
+            extensions: ['htm', 'html'],
+            index: false,
+            maxAge: '1d',
+            redirect: false,
+            setHeaders(res: any, path: any, stat: any) {
+                res.set('x-timestamp', Date.now())
+            }
+        }
+        AppServer.App.use('/error', express.static(join(process.cwd(), "src","utils","resources","404.html"), options));
     }
     /**
      * Initializes the middlewares for the application.

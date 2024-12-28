@@ -5,23 +5,17 @@ import { CommonEntity } from "./common";
 @Entity("health-check")
 export class HealthcheckEntity extends CommonEntity {
 
-  @Column()
-  path!: string;
+  @Column({default:"/healthz",})
+  healthcheck_path!: string;
 
   @JoinColumn()
   @OneToOne(() => ApplicationEntity, (app) => app.healthCheck)
-  application!: Relation<ApplicationEntity>; 
-
-  @Column()
-  is_maintainance_mode!: boolean;
-
-  @Column({ nullable: true })
-  maintainance_url!: string;   
+  application!: Relation<ApplicationEntity>;   
 
   @Column({ default: false })
   is_healthy!: boolean;   
 
-  @Column({ default: false })
+  @Column({ default: true })
   is_active!: boolean;
 
 }

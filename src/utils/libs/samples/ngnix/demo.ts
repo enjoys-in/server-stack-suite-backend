@@ -13,9 +13,9 @@ export class NginxSample {
 
     }
       
-    static healthCheck(host: string , timeout: number = 2000) {
+    static healthCheck(host: string , path="/healthz",timeout: number = 2000) {
         return `
-        location /healthz {
+        location ${path} {
             content_by_lua_block {
                 local http = require("resty.http")
                 local httpc = http.new()
@@ -120,15 +120,15 @@ export class NginxSample {
             manage: `                    
                     
             server {
-                if ($host = www.api.saveit.in) {
+                if ($host = www.host) {
                     return 301 https://$host$request_uri;
                 } 
 
-                if ($host = api.saveit.in) {
+                if ($host = host) {
                     return 301 https://$host$request_uri;
                 } 
 
-                server_name api.saveit.in www.api.saveit.in;
+                server_name host www.host;
                 listen 80;
                 return 404;
 

@@ -73,6 +73,12 @@ export class ApplicationEntity extends CommonEntity {
   @Column({ type: "json" })
   commands!: Commands;
 
+  @Column({default:false})
+  is_maintainance_mode!: boolean;
+
+  @Column({ nullable: true })
+  maintainance_url!: string;  
+
   @OneToMany(() => WebhookEntity, (webhook) => webhook.applicationId, { nullable: true, cascade: ['remove'], })
   webhooks!: WebhookEntity[];
 

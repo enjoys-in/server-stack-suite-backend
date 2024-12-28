@@ -11,9 +11,12 @@ export class AppProxyMiddleware implements OnAppShutDown {
     onAppShutDown(): void {
 
     }
-
+    static extractSubdomain(domain:string|undefined){
+        const subdomain = domain?.split('.').shift()
+        return subdomain;
+    }
     static dynamicProxy(req: Request, res: Response, next: NextFunction) {
-        const subdomain = req.headers.host?.split('.')[0]; // Extract subdomain
+        const subdomain = AppProxyMiddleware.extractSubdomain(req.headers.host)
         if (!helpers.isValidSubdomain(subdomain as string)) {
             // throw new HttpException({
             //     name: "NOT_FOUND",

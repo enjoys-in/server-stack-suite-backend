@@ -6,7 +6,7 @@ import { EVENT_CONSTANTS } from "@/utils/helpers/events.constants";
 import { OnEvent } from "@/utils/decorators";
 import { USER_STORE } from "@/utils/services/sockets/Sockets";
 import { LogsProvider } from "@/handlers/providers/logs.provider";
-import { existsSync, unlinkSync } from "fs";
+import { existsSync, stat, unlinkSync } from "fs";
 import { join } from "path";
 import { execSync } from "child_process";
 import { CreateApplicaionDTO } from "./dto/application.dto";
@@ -15,6 +15,9 @@ import { NginxSample } from "@/utils/libs/samples/ngnix/demo";
 import { FileOperations } from "@/handlers/providers/io-operations";
 import containersService from "../containers/containers.service";
 import { SOCKET_EVENTS } from "@/utils/services/sockets/socketEventConstants";
+import { ApplicationDeploymentStatus, ApplicationState, BuilderOption } from "@/utils/interfaces/deployment.interface";
+import { SystemOperations } from "@/handlers/providers/system-operations";
+import { AppProxyMiddleware, subdomainPortMap } from "@/middlewares/proxy.middleware";
 
 const logsProvider = new LogsProvider()
 const fileOperations = new FileOperations()
@@ -81,7 +84,18 @@ class ApplicationController {
         await fileOperations.writeFile(nginxFile, fileContent)
         delete req.body.is_assigned
       }
-      const data = await applicationService.updateApplicationMetadata(Number(id), req.body)
+      if (req.body.selected_domain && req.body.set_temporarily) {
+        const tempDomain = AppProxyMiddleware.extractSubdomain(req.body.selected_domain)
+        if (!tempDomain) {
+          throw new Error("Unable to Associates Domain")
+        }
+        subdomainPortMap[tempDomain] = +req.body.port
+        delete req.body.set_temporarily
+      }
+      if (req.body.health_check || req.body.maintenance_mode) {
+
+      }
+      await applicationService.updateApplicationMetadata(Number(id), req.body)
       res.json({ success: true, message: "Application Updated", result: null, }).end();
     } catch (error: any) {
       if (error instanceof Error) {
@@ -309,14 +323,31 @@ class ApplicationController {
   }
   async addHealthCheck(req: Request, res: Response) {
     try {
-      const body = req.body as {
-        path: string;
-        application_id: string;
+      const body = req.body as { application_id: string } & ({
+        healthcheck_path: string;
+        is_active: boolean;
+
+      } | {
         is_maintainance_mode: boolean;
-        is_active: boolean;    }
-    
-      await applicationService.addApplicationHealthCheck(body)
-      res.json({ success: true, message: "Health Check Addded", result: {} }).end()
+        maintainance_url: string;
+      })
+      if ('is_maintainance_mode' in body && "maintainance_url" in body) {
+
+        await applicationService.updateApplicationMetadata(+body.application_id, {
+          is_maintainance_mode: body.is_maintainance_mode,
+          maintainance_url: body.maintainance_url
+        })
+        res.json({ success: true, message: "Maintainance Mode Added", result: {} }).end()
+        return
+      }
+      if ('is_active' in body && "healthcheck_path" in body) {
+        await applicationService.addApplicationHealthCheck(body)
+        // NginxSample.healthCheck(`${applicationIntance.selectedDomain}`, `${body.healthcheck_path}`, 2000))
+        res.json({ success: true, message: "Health Check Addded", result: {} }).end()
+        return
+      }
+
+      res.json({ success: true, message: "Lol Nothing Happened", result: {} }).end()
     } catch (error: any) {
       if (error instanceof Error) {
         res.json({ message: error.message, result: null, success: false })
@@ -325,6 +356,65 @@ class ApplicationController {
       res.json({ message: "Something went wrong", result: null, success: false })
     }
   }
+  async changeStateOfApp(req: Request, res: Response) {
+    try {
+      const body = req.body as {
+        state: "stop" | "start";
+        application_id: string;
+
+      }
+      const app = await applicationService.getSingleApplication(+body.application_id)
+      if (!app) {
+        throw new Error(`Application not found`)
+      }
+
+
+      if (app.selectedBuilder === "default") {
+        const cmd = `pm2 stop ${app.metadata.application_deployment_name}`
+        await SystemOperations.executeCommand(cmd)
+      }
+      const data = await containersService.getOneRunningContainerByAppId(body.application_id, true)
+      if (!data) {
+        res.json({ success: true, message: "", result: {} }).end()
+        return
+      }
+
+      if (body.state === "start") {
+        deploymentService.emitEvent(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.PROVISIONING)
+        await containersService.startContainer(data.name)
+        await containersService.updateContainerStatus({ 
+          application: { id: +body.application_id }, is_primary:true,container_status: "STOPPED" }, 
+          { 
+            container_status: "RUNNING" ,
+            started_at: new Date().toISOString(),
+          })
+        await applicationService.updateApplicationMetadata(+body.application_id, { status: ApplicationDeploymentStatus.RUNNING })
+        deploymentService.emitEvent(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationState.RUNNING)
+
+      } else {
+        deploymentService.emitEvent(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationState.STOPPING)
+        await containersService.stopContainer(data.name)
+        await containersService.updateContainerStatus({ application: { id: +body.application_id },is_primary:true, container_status: "RUNNING" },  { 
+          container_status: "STOPPED" ,
+          stopped_at: new Date().toISOString(),
+        })
+        await applicationService.updateApplicationMetadata(+body.application_id, { status: ApplicationDeploymentStatus.POWER_OFF })
+        deploymentService.emitEvent(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationState.POWER_OFF)
+      }
+
+
+
+
+      res.json({ success: true, message: body.state === "stop" ? "App Stopped" : "App Started", result: {} }).end()
+    } catch (error: any) {
+      if (error instanceof Error) {
+        res.json({ message: error.message, result: null, success: false })
+        return;
+      }
+      res.json({ message: "Something went wrong", result: null, success: false })
+    }
+  }
+
   @OnEvent(EVENT_CONSTANTS.DEPLOYMENT.STARTED, {
     async: true,
   })

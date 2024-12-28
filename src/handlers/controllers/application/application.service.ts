@@ -60,7 +60,10 @@ class ApplicationService {
         return appRepository.findOne({ where: { id }, relations: ["project", "containers"] })
     }
     updateApplicationMetadata(id: number, metadata: UpdateApplicaionDTO) {
-        return appRepository.update({ id }, { ...metadata, useDockerfile: Boolean(metadata.useDockerfile) })
+        if ("useDockerfile" in metadata) {
+            metadata = { ...metadata, useDockerfile: Boolean(metadata.useDockerfile) }
+        }
+        return appRepository.update({ id }, metadata)
     }
     deleteApplication(id: number) {
         return appRepository.delete({ id })
@@ -68,16 +71,27 @@ class ApplicationService {
     getApplicationDeploymentEvents(application_id: number) {
         return appDeploymentEventsRepository.find({ where: { application: { id: application_id } } })
     }
-    addApplicationHealthCheck(body: any) {
-        const application = new ApplicationEntity();
-        application.id = body.application_id;
-        const prepareBody: UpdateApplicaionCommand = {
-            path: body.path,
-            application: application,
-            is_maintainance_mode: body.is_maintainance_mode,
-            is_active: body.is_active
+    async addApplicationHealthCheck(body: any) {
+        const healthCheck = await healthCheckRepository.findOne({ where: { application: { id: body.application_id } } })
+        if (healthCheck) {
+            return healthCheckRepository.update({
+                application: {
+                    id: +body.application_id
+                },
+            }, {
+                healthcheck_path: body.healthcheck_path,
+                is_active: body.is_active,
+            });
         }
-        return healthCheckRepository.save(prepareBody)
+        const response = await healthCheckRepository.save({
+            healthcheck_path: body.healthcheck_path,
+            application: {
+                id: +body.application_id
+            },
+            is_active: body.is_active
+        })
+        return this.updateApplicationMetadata(+body.application_id, { healthCheck: response })
+
     }
 
 }

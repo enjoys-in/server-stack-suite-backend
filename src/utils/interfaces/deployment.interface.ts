@@ -17,14 +17,14 @@ export interface ApplicationDeployment {
   commands: Commands
   isZipFile: string
   tags: string[]
-  selectedBuilder: string
+  selectedBuilder: BuilderOption
   selectedRepo: string
 }
 export interface FileUploadInfo {
   fileInfo: FileInfo
   appType: AppType
 }
-
+export type BuilderOption = "nixpack" | "docker" | "default"
 export interface FileInfo {
   file_id: string
   key: string
@@ -60,6 +60,7 @@ export interface DockerMetadata {
 export interface ApplcationMetadata {
   is_repo_private?: boolean
   is_zip_file?: boolean
+  application_deployment_name?: string
 }
 export interface Path {
   main_directory: string
@@ -80,12 +81,16 @@ export enum ApplicationDeploymentStatus {
   DEPLOYED = "DEPLOYED",
   FAILED = "FAILED",
   RUNNING = "RUNNING",
-
+  TERMINATING = "TERMINATING",
+  TERMINATED = "TERMINATED",
+  STOPPING = "STOPPING",
+  POWER_OFF = "POWER_OFF",
 }
 export enum ApplicationState {
   RUNNING = "RUNNING",
   TERMINATING = "TERMINATING",
   TERMINATED = "TERMINATED",
+  STOPPING = "STOPPING",
   POWER_OFF = "POWER_OFF",
 }
 export enum WebhookStatus {

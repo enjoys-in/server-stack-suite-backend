@@ -6,7 +6,7 @@ const __config = {
         IS_PROD :(APP_ENV === "DEV" || APP_ENV === "undefined") ? false : true,
         APP_PORT,
         APP_ENV,
-        APP_DOMAIN,
+        APP_DOMAIN:APP_DOMAIN.trim()==="localhost" ? `localhost:${APP_PORT}` : APP_DOMAIN,
         APP_URL: (APP_ENV === "DEV" || APP_ENV === "undefined") ? `http://localhost:${APP_PORT}` : APP_DOMAIN,
         API_KEY: String(process.env.API_KEY),
         ALLOWED_PRIMARY_DOMAINS: String(process.env.ALLOWED_PRIMARY_DOMAINS),
