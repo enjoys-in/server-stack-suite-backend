@@ -1,30 +1,65 @@
+import { onEnableHook } from '@/utils/decorators';
+import helpers from '@/utils/helpers';
+import { OnAppShutDown } from '@/utils/interfaces/application.interface';
+import { HttpException } from '@enjoys/exception';
 import { Request, Response, NextFunction } from 'express';
-import { createProxyMiddleware } from 'http-proxy-middleware';
-export class ProxyMiddleware {
-    
-    dynamicProxy(req: Request, res: Response, next: NextFunction) {
+import { createProxyMiddleware, fixRequestBody } from 'http-proxy-middleware';
+
+export let subdomainPortMap: Record<string, number> = {};
+@onEnableHook()
+export class AppProxyMiddleware implements OnAppShutDown {
+    onAppShutDown(): void {
+
+    }
+
+    static dynamicProxy(req: Request, res: Response, next: NextFunction) {
         const subdomain = req.headers.host?.split('.')[0]; // Extract subdomain
+        if (!helpers.isValidSubdomain(subdomain as string)) {
+            // throw new HttpException({
+            //     name: "NOT_FOUND",
+            //     message: "Subdomain is required",
+            //     stack: {
+            //         info: `Given subdomain ${subdomain} is not valid`, path: req.baseUrl, method: req.method
+            //     }
+            // })
+            throw new HttpException({
+                name: "NOT_FOUND",
+                message: "Page Not Found",
+                stack: { info: "Forbidden Resource", path: req.baseUrl, method: req.method }
+            })
 
-        if (!subdomain) {
-            res.status(400).send('Subdomain is required');
-            return;
         }
 
-        // Map subdomain to port or target URL
-        const port = this.getPortForSubdomain(subdomain);
+        const port = AppProxyMiddleware.getPortForSubdomain(subdomain as string);
         if (!port) {
-            res.status(404).send('No target configured for this subdomain');
-            return;
+            throw new HttpException({
+                name: "NOT_FOUND",
+                message: "No App configured for this subdomain",
+                stack: { info: "Forbidden Resource", path: req.baseUrl, method: req.method }
+            })
         }
-
-        const target = `http://${subdomain}.localhost:${port}`;
-
-        // Create a proxy middleware for this request
+        const target = `http://localhost:${port}`;
         const proxy = createProxyMiddleware({
             target,
             changeOrigin: true,
-            pathRewrite: {
-                '^/api': '/',
+            pathRewrite: (path, req) => {
+                return path.replace(/^\/[^/]+/, '/');
+            },
+            on: {
+                proxyReq: (proxyReq, req, res) => {
+                    const expressReq = req as Request;
+                    if (['POST', 'PUT', 'PATCH'].includes(expressReq.method)) {
+                        if (expressReq.body) {
+                            const bodyData = JSON.stringify(expressReq.body);
+                            proxyReq.setHeader('Content-Type', 'application/json');
+                            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+                            proxyReq.write(bodyData);
+                            proxyReq.end();
+                        }
+                    }
+                    return fixRequestBody
+                },
+
             },
         });
 
@@ -32,11 +67,8 @@ export class ProxyMiddleware {
     };
 
     // Helper function to map subdomain to port
-    getPortForSubdomain = (subdomain: string): number | undefined => {
-        const subdomainPortMap: Record<string, number> = {
-            "test": 8080,
-            "dev": 9090,           
-        };
+    private static getPortForSubdomain = (subdomain: string): number | undefined => {
+
         return subdomainPortMap[subdomain];
     };
 

@@ -4,11 +4,14 @@ import { join } from "path";
 import { createCipheriv, createHash, randomBytes, scrypt } from 'crypto';
 import { promisify } from 'util';
 
+const validSubdomainRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
 
+ 
 export let Tokens = new Map();
 export let BlacklistedTokens: string[] = [];
 export const SetAppRoutes = new Map();
 class Helpers {
+    isValidSubdomain = (subdomain: string): boolean => validSubdomainRegex.test(subdomain);
     randomPort(runnigPorts: Record<any, any>, minPort: number, maxPort: number) {
         const port = Math.floor(Math.random() * (minPort - maxPort + 1)) + minPort;
 

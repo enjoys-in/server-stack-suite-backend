@@ -61,9 +61,7 @@ class AppServer {
             credentials: true
         }));
         AppServer.App.use(bodyParser.json());
-        AppServer.App.use(fileUpload({
-            tempFileDir:"./"
-          }));
+        AppServer.App.use(fileUpload({tempFileDir:"./" }));
         AppServer.App.use(useHttpsRedirection);
         AppServer.App.use(AppMiddlewares.attachIotoRequestHandler(io));
         AppServer.App.use(SessionHandler.forRoot());
@@ -111,7 +109,6 @@ class AppServer {
      */
     private RegisterRoutes(): void {
         Logging.dev("Registering Routes")
-
         AppServer.App.use(AppRoutes);
         RouteResolver.Mapper(AppServer.App, { listEndpoints: false, onlyPaths: false });
     }

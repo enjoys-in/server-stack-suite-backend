@@ -31,7 +31,7 @@ export class JwtAuth {
                 );
                 return regex.test(path);
             })?.handler;
-            
+
             const isPublicRoute = routeHandler && Reflect.getMetadata(PUBLIC_ROUTE_KEY, routeHandler);
             if (isPublicRoute) {
                 return next();

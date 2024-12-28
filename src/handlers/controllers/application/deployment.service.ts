@@ -20,7 +20,14 @@ import { formatDate, LOG_DIR } from "@/utils/helpers/file-logs";
 import { NixpackPlan } from "@/utils/interfaces/buidPacksPlan.interface";
 import hbs from "handlebars";
 import toml from 'toml'
-
+import { uniqueNamesGenerator,Config,adjectives,animals ,colors,countries ,names,languages,starWars  } from 'unique-names-generator';
+import { subdomainPortMap } from "@/middlewares/proxy.middleware";
+const config: Config = {
+    separator: '-',
+    seed: 120498,
+    style:"lowerCase",
+    dictionaries: [adjectives,animals ,colors,countries ,names,languages,starWars]
+};
 
 
 const git = simpleGit();
@@ -264,6 +271,9 @@ class DepploymentService {
 
 
             application.status = ApplicationDeploymentStatus.RUNNING;
+            const tempDomain = uniqueNamesGenerator(config)
+            subdomainPortMap[tempDomain] = +application.port
+            application.selected_domain =  `http://${tempDomain}.localhost:${application.port}`
             await appRepository.save(application);
             logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.RUNNING)
 
