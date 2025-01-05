@@ -6,9 +6,11 @@ import { IDockerImageOptions } from "@/utils/interfaces/docker.interface";
 import { InjectRepository } from "@/factory/typeorm";
 import { ContainerEntity } from "@/factory/entities/container.entity";
 import { FindOptionsWhere } from "typeorm";
+import helpers from "@/utils/helpers";
 const options = { socketPath: "/var/run/docker.sock" }
 
 const docker = new Dockerode()
+
 const containerRepository = InjectRepository(ContainerEntity)
 
 
@@ -24,11 +26,14 @@ class ContainerService {
     return containerRepository.find({ where: { application: { id: +appId } } });
   }
   getOneRunningContainerByAppId(appId: string, isRunning: boolean) {
-    return containerRepository.findOne({ where: { application: { id: +appId }, is_primary: isRunning,} });
+    return containerRepository.findOne({ where: { application: { id: +appId }, is_primary: isRunning, } });
   }
 
-  updateContainerStatus(where: FindOptionsWhere<ContainerEntity>, metadata:Partial<ContainerEntity>) {
-    return containerRepository.update(where,metadata );
+  updateContainerStatus(where: FindOptionsWhere<ContainerEntity>, metadata: Partial<ContainerEntity>) {
+    return containerRepository.update(where, metadata);
+  }
+  removeColorCharacters(log: string): string {
+    return log.replace(/[\x00-\x09\x0B-\x1F\x7F-\x9F]/g, '');
   }
   async getContainerLogs(container_tag: string, socket: any): Promise<any> {
 
@@ -43,7 +48,7 @@ class ContainerService {
 
       logStream.on('data', (chunk) => {
         const log = chunk.toString('utf-8');
-        socket.emit(SOCKET_EVENTS.CONTAINER_LOGS, log);
+        socket.emit(SOCKET_EVENTS.CONTAINER_LOGS, this.removeColorCharacters(log));
       });
 
       logStream.on('error', (err) => {
@@ -99,7 +104,54 @@ class ContainerService {
   async listContainers(): Promise<Dockerode.ContainerInfo[]> {
     return docker.listContainers();
   }
-  createContainerImage(options: Partial<IDockerImageOptions>): Promise<any> {
+  async trackContainerStream(stream: any) {
+    docker.modem.followProgress(stream, (err: any, stream: any) => {
+
+    }, (obj) => {
+
+    });
+  }
+  async pullAnyImage(image: string, cb?: (chunks: string) => void): Promise<any> {
+    let chunks = ""
+    return new Promise((resolve, reject) => {
+      docker.pull(image, { stream: true }, (err: any, stream: any) => {
+        if (err) {
+          reject('Error creating image:' + err);
+        } else {
+          docker.modem.followProgress(stream, (progressError: any, output: {
+            id: string;
+            status: string;
+            progress: string;
+            progressDetail: { current: number; total: number; };
+          }[]) => {
+            if (progressError) {
+              reject(progressError);
+              return;
+            }
+            resolve(output);
+          }, (obj: {
+            id: string;
+            status: string;
+            progress: string;
+            progressDetail: { current: number; total: number; };
+          }) => {
+            if (cb) {
+              const size = (obj?.progressDetail?.current || 0) !== 0
+                ? helpers.formatBytes2(obj?.progressDetail?.current) + "/" + helpers.formatBytes2(obj?.progressDetail?.total)
+                : '';
+
+              const progressString = `${obj.status} ${(obj?.id && "ID: " + obj?.id) || ""}, ${obj?.progress || ''} ${obj?.progressDetail?.current !== 0 && obj?.progressDetail?.total !== 0 ? size : ''}`;
+
+              cb(progressString);
+            }
+
+          });
+
+        }
+      })
+    })
+  }
+  async createContainerImage(options: Partial<IDockerImageOptions>): Promise<any> {
     let chunks = ""
 
     return new Promise((resolve, reject) => {
@@ -120,9 +172,7 @@ class ContainerService {
       })
     })
   }
-  deleteContainer(containerId: string) {
-    return this.getContainer(containerId).remove();
-  }
+
   getContainer(containerId: string): Container {
     return docker.getContainer(containerId);
   }

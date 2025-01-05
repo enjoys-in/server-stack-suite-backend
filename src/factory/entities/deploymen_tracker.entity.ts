@@ -15,16 +15,16 @@ export class DeploymentTrackerEntity extends CommonEntity {
     onDelete: 'SET NULL',
     nullable: true,
   })
-  application!:  Relation<ApplicationEntity>;
+  application!: Relation<ApplicationEntity>;
 
-  @Column({nullable: true, default: null })
+  @Column({ nullable: true, default: null })
   container_name!: string;
 
   @Column({ enum: DeploymentStatus, default: DeploymentStatus.PENDING })
   status!: string;
 
   @OneToMany(() => ContainerEntity, (container) => container.deployment)
-containers!: ContainerEntity[];
+  containers!: ContainerEntity[];
 
   @Column()
   started_at!: string;
@@ -35,8 +35,8 @@ containers!: ContainerEntity[];
   @Column({ default: "" })
   ended_at!: string;
 
- 
+
   stopDeployment() {
-    this.status = DeploymentStatus.STOPPED;    
+    this.status = DeploymentStatus.STOPPED;
   }
 }

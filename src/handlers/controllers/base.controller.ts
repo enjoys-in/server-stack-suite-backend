@@ -1,20 +1,19 @@
 import { formatDate, HandleLogs } from "@/utils/helpers/file-logs";
 import type { Request, Response } from "express";
-import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFile, writeFileSync } from "fs";
-import { extname, join, resolve } from "path";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFile, writeFileSync } from "fs";
+import { extname, join } from "path";
 import AppService from '@handlers/providers/app.provider'
 const SERVER_CONFIG = join(process.cwd(), "./sever.config.json")
 const LOG_DIR = join(process.cwd(), "logs")
 import Client from 'ssh2-sftp-client'
 import { Logging } from "@/logs";
-import { DEPLOYMENT_DIR, SERVER_TYPE_FILE_PATH } from "@/utils/paths";
+import { SERVER_TYPE_FILE_PATH } from "@/utils/paths";
 import { OnAppShutDown, OnAppStart } from "@/utils/interfaces/application.interface";
 import { onEnableHook } from "@/utils/decorators";
 import { FileOperations } from "../providers/io-operations";
 import { FileHandler, UploadFileBody } from "@/utils/interfaces/fileupload.interface";
 import { CustomFunctions } from "../providers/custom-functions";
 import helpers from "@/utils/helpers";
-
 const fileOps = new FileOperations()
 const func = new CustomFunctions()
 
@@ -33,8 +32,7 @@ class BaseController implements OnAppStart, OnAppShutDown {
         UpdateLogsToFileOnStartup()
 
     }
-
-
+   
     async uploadFiles(req: Request, res: Response) {
         try {
 
@@ -77,7 +75,7 @@ class BaseController implements OnAppStart, OnAppShutDown {
                 filePath
             }
 
-           
+
 
             res.json({
                 success: true,
@@ -361,7 +359,7 @@ class BaseController implements OnAppStart, OnAppShutDown {
 
     async getFileContent(req: Request, res: Response) {
         try {
-            const dirPath = req.query.path || '/';
+            const dirPath = req.query.path || process.env.HOME || "/"
             const fileData = readFileSync(String(dirPath), { encoding: 'utf-8' });
 
             res.json({

@@ -23,9 +23,12 @@ class Helpers {
 
         return port;
     };
-    formatBytes(sizeInKB: number) {
+    formatBytes(sizeInKB: number|string) {
         if (!sizeInKB) {
             return ''
+        }
+        if (typeof sizeInKB ==='string') {
+            sizeInKB = parseInt(sizeInKB)
         }
         const units = ['KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
         let index = 0
@@ -37,6 +40,15 @@ class Helpers {
 
         return `${sizeInKB.toFixed(2)} ${units[index]}`
     }
+    formatBytes2 = (bytes: number): string => {
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+        if (typeof bytes ==='string') {
+            bytes = parseInt(bytes)
+        }
+        if (bytes === 0) return '0 Bytes';
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
+      }
     isValidIP(input:string) {
         // Check IPv4 format
         const ipv4Pattern = /^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
@@ -364,5 +376,6 @@ class Helpers {
     SimpleHash(): string {
         return crypto.randomBytes(32).toString("hex");
     }
+  
 }
 export default new Helpers();

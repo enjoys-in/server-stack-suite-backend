@@ -6,6 +6,7 @@ import { USER_STATUS } from '@/utils/helpers/constants';
 import { DASHBOAD_CONFIG } from '@/utils/interfaces/user.interface';
 import { ProjectsEnitity } from './project.entity';
 import { IntegrationsEntity } from './integrations.enitity';
+import { ActiveServicesEntity } from './active_services.enitity';
 
 
 
@@ -48,6 +49,9 @@ export class UserEntity extends CommonEntity {
 
     @OneToMany(() => IntegrationsEntity, (integrations) => integrations.user, { nullable: true, cascade: ["insert"], onDelete: "CASCADE", onUpdate: "NO ACTION" })
     integrations!: IntegrationsEntity[];
+
+    @OneToMany(() => ActiveServicesEntity, (svc) => svc.user, { nullable: true, cascade: ["insert"], onDelete: "CASCADE", onUpdate: "NO ACTION" })
+    active_services!: ActiveServicesEntity[];
 
 
 }

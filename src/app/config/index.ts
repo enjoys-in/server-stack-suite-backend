@@ -20,6 +20,7 @@ const __config = {
         COOKIE_SECRET: String(process.env.COOKIE_SECRET),
         SESSION_SECRET: String(process.env.SESSION_SECRET),
         JWT_SECRET_EXPIRATION: String(process.env.JWT_SECRET_EXPIRATION),
+        GOOGLE_GEMINI_API_KEY: String(process.env.GOOGLE_GEMINI_API_KEY),
     },
     DATABASE: {
         DB_DIALECT: String(process.env.DB_DIALECT) || "postgres",

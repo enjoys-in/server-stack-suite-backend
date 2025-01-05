@@ -191,3 +191,19 @@ export interface DockerCreateContainerOptions {
   Healthcheck?: Dockerode.ContainerCreateOptions["Healthcheck"]
   HostConfig: Dockerode.ContainerCreateOptions["HostConfig"]
 }
+
+ type Images = "redis" | "mongo" | "postgres" | "mysql" | "stalwartlabs/mail-server" | "gitea/gitea"
+ export type DockerServiceImages = `${Images}:latest`
+
+export interface ServicesData {
+    serviceId: number;
+    serviceName: string;
+    serviceSlug: string;
+    imageName: DockerServiceImages
+    serviceDescription: string;
+    serviceType: string;
+    servicePort: string[];
+    serviceStatus: boolean;
+    auth_required: boolean;
+
+}

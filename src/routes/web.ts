@@ -8,7 +8,7 @@ import { AppProxyMiddleware } from "@/middlewares/proxy.middleware";
 
 const router = Router();
 
-router.use("/api/v1", IntergrationRoutes);
+router.use("/api/v1", JwtAuth.validateUser, IntergrationRoutes);
 router.use("/api/v1", JwtAuth.validateUser, ApiRoutes);
 router.use(AppProxyMiddleware.dynamicProxy);
 router.use("*", (req: Request, res: Response) => {

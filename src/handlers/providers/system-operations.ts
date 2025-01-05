@@ -12,24 +12,35 @@ export class SystemOperations {
     }
   };
 
-  static run(command: string, args: string[]) {
+  static run(command: string, args: string[] | null) {
     let child: ChildProcess
-    if (!args) {
-      child = spawn(command, args, { shell: true, stdio: 'inherit', detached: true, });
-    }
-    child = spawn(command, { shell: true, stdio: 'inherit' });
+    return new Promise((resolve, reject) => {
+      let result;
+      if (args) {
+        child = spawn(command, args, { shell: true, stdio: 'inherit', detached: true, });
+      }
+      else {
+        child = spawn(command, { shell: true, stdio: 'inherit' });
+      }
 
-    child.on('error', (err) => {
-      console.log(err);
-    });
-    child.stdout!.on('data', (data) => {
-      console.log(data);
-    });
-    child.on('close', (code) => {
-      console.log(`child process exited with code ${code}`);
-    });
-    child.kill()
-    return child
+      child.on('error', (err) => {
+        reject(err);
+      });
+      child.stdout!.on('data', (data) => {
+
+        resolve(data.toString());
+      });
+      child.on('close', (code) => {
+        if (code === 0) {
+          child.kill()
+        } else {
+          child.kill()
+          reject(new Error(`Process exited with code ${code}`));
+        }
+
+      });
+
+    })
   }
   static async executeCommand(command: string, args?: string[]): Promise<{ stdout: string, stderr: string }> {
     return new Promise((resolve, reject) => {

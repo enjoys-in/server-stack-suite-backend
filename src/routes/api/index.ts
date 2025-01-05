@@ -1,7 +1,10 @@
 import { Router } from "express";
-import { UserAuthController ,HostController ,BaseController,ContainerController,
-    FirewallPortsController,SslCertificatesController, ProjectController, ApplicationController} from "@/handlers/controllers";
-import { ReqValidator,HostValidator } from "@/utils/validators/Request.validator";
+import {
+    UserAuthController, HostController, BaseController, ContainerController,
+    FirewallPortsController, SslCertificatesController, ProjectController, ApplicationController,
+    ServiceController,AiController
+} from "@/handlers/controllers";
+import { ReqValidator, HostValidator } from "@/utils/validators/Request.validator";
 import { Validator } from "@/middlewares/validator.middleware";
 import { JwtAuth } from "@/middlewares/auth.Middleware";
 
@@ -14,9 +17,8 @@ router.post("/auth/register", ReqValidator.Register, UserAuthController.default.
 router.post("/auth/update-password", ReqValidator.UpdatePassword, UserAuthController.default.UpdatePassword)
 
 
-// Error Page Routes
 
-// Project Routes
+/** Project Routes  */
 // Main
 router.get("/server-logs", BaseController.default.serverLogs)
 router.get("/server-info", BaseController.default.readServerAnaylitcs)
@@ -28,6 +30,9 @@ router.get("/files", BaseController.default.getFiles)
 router.get("/file-content", BaseController.default.getFileContent)
 router.get("/server-file-content", BaseController.default.getServerFileContent)
 router.put("/server-file-content", BaseController.default.updateServerFileContent)
+router.post("/ask-to-ai", AiController.default.genarativeAI)
+router.get("/get-suggestions", AiController.default.getSuggestionsFromHistory)
+router.post("/get-dir", AiController.default.getDirectories)
 
 
 
@@ -39,14 +44,14 @@ router.get("/firewalls-ports/kill-process/:pid", FirewallPortsController.default
 
 // SSL certificate
 router.route("/:server_name/ssl-certificates")
-.get(SslCertificatesController.default.findAll)
-.post(SslCertificatesController.default.create)
-.delete(SslCertificatesController.default.delete)
-router.get("/:server_name/ssl-certificates/:id",SslCertificatesController.default.findOne)
+    .get(SslCertificatesController.default.findAll)
+    .post(SslCertificatesController.default.create)
+    .delete(SslCertificatesController.default.delete)
+router.get("/:server_name/ssl-certificates/:id", SslCertificatesController.default.findOne)
 
 // Host Routes
-router.get("/:server_name/hosts",Validator.forFeature(HostValidator.getAll),HostController.default.getAllHosts)
-router.get("/:server_name/hosts/d/:domain_name",Validator.forFeature(HostValidator.getSingle), HostController.default.getSingleHost)
+router.get("/:server_name/hosts", Validator.forFeature(HostValidator.getAll), HostController.default.getAllHosts)
+router.get("/:server_name/hosts/d/:domain_name", Validator.forFeature(HostValidator.getSingle), HostController.default.getSingleHost)
 router.put("/:server_name/hosts/proxy/:domain_name?", HostController.default.updateHost)
 router.delete("/:server_name/hosts/proxy/:domain_name?", HostController.default.deleteHost)
 router.post("/:server_name/hosts/proxy", HostController.default.addNewHosts)
@@ -57,7 +62,7 @@ router.post("/:server_name/hosts/error-page", HostController.default.AddNewError
 router.get("/:server_name/hosts/error-page", HostController.default.getAllErrorPage)
 router.get("/:server_name/hosts/error-page/:id", HostController.default.getOneErrorPage)
 router.delete("/:server_name/hosts/error-page/:id", HostController.default.deleteErrorPage)
-router.put("/:server_name/hosts/error-page/:id", HostController.default.updateErrorPage) 
+router.put("/:server_name/hosts/error-page/:id", HostController.default.updateErrorPage)
 
 //  Project Route
 router.get("/projects", ProjectController.default.allProject)
@@ -84,7 +89,18 @@ router.get("/deployments/events/:application_id", ApplicationController.default.
 router.get("/deployments/logs/:deployment_id", ApplicationController.default.deploymentLogs)
 router.get("/connect/:namespace", ApplicationController.default.getLiveTailLogs)
 router.get("/rollback-deployment/:application_id/:deployment_id", ApplicationController.default.rollbackApplication)
- 
+// Services Routes
+router.get("/all-services", ServiceController.default.availableServices)
+router.get("/get-services", ServiceController.default.getServices)
+router.get("/get-service/:id", ServiceController.default.getSingleServices)
+router.get("/change-status-of-service/:container_id", ServiceController.default.changeServiceState)
+router.post("/create-service", ServiceController.default.applyNewService)
+router.delete("/delete-service", ServiceController.default.deleteService)
+
+router.post("/create-data", ServiceController.default.createData)
+router.delete("/delete-data", ServiceController.default.deleteData)
+router.get("/connect-service/:service_id", ServiceController.default.connectService)
+
 
 // Webhook Rouetes
 

@@ -4,131 +4,258 @@ import { InjectRepository } from "@/factory/typeorm";
 import { WebhookService } from "@/handlers/providers/webhook.provider";
 import { ApplicationEntity } from "@/factory/entities/application.entity";
 import { LogsProvider } from "@/handlers/providers/logs.provider";
-import { ApplicationDeploymentStatus, ContainerStatus, DeploymentState, DeploymentStatus, WebhookStatus } from "@/utils/interfaces/deployment.interface";
-import { existsSync, readFileSync, writeFile, writeFileSync } from "fs";
-import { COMMANDS, DEPLOYMENT_DIR } from "@/utils/paths";
+import {
+    ApplicationDeploymentStatus,
+    ContainerStatus,
+    DeploymentState,
+    DeploymentStatus,
+    DockerServiceImages,
+    WebhookStatus,
+} from "@/utils/interfaces/deployment.interface";
+import { existsSync, readFileSync, writeFileSync } from "fs";
+import { COMMANDS, DEPLOYMENT_DIR, HOME_DIR } from "@/utils/paths";
 import { CustomFunctions } from "@/handlers/providers/custom-functions";
 import { DeploymentTrackerEntity } from "@/factory/entities/deploymen_tracker.entity";
 import { SOCKET_EVENTS } from "@/utils/services/sockets/socketEventConstants";
 import { SystemOperations } from "@/handlers/providers/system-operations";
 import { FileOperations } from "@/handlers/providers/io-operations";
-import simpleGit from "simple-git"
+import simpleGit from "simple-git";
 import helpers from "@/utils/helpers";
 import containersService from "../containers/containers.service";
 import { ContainerEntity } from "@/factory/entities/container.entity";
 import { formatDate, LOG_DIR } from "@/utils/helpers/file-logs";
 import { NixpackPlan } from "@/utils/interfaces/buidPacksPlan.interface";
 import hbs from "handlebars";
-import toml from 'toml'
-import { uniqueNamesGenerator,Config,adjectives,animals ,colors,countries ,names,languages,starWars  } from 'unique-names-generator';
+import toml from "toml";
+import {
+    uniqueNamesGenerator,
+    Config,
+    adjectives,
+    animals,
+    colors,
+    countries,
+    names,
+    languages,
+    starWars,
+} from "unique-names-generator";
 import { subdomainPortMap } from "@/middlewares/proxy.middleware";
 import { CONFIG } from "@/app/config";
+import githubService from "../third-party/github.service";
+import { ActiveServicesEntity } from "@/factory/entities/active_services.enitity";
+import { SERVER_DATA } from "@/utils/libs/data";
+import { AppEvents } from "@/utils/services/Events";
+import { EVENT_CONSTANTS } from "@/utils/helpers/events.constants";
 const config: Config = {
-    separator: '-',
+    separator: "-",
     seed: 120498,
-    style:"lowerCase",
-    dictionaries: [adjectives,animals ,colors,countries ,names,languages,starWars]
+    style: "lowerCase",
+    dictionaries: [
+        adjectives,
+        animals,
+        colors,
+        countries,
+        names,
+        languages,
+        starWars,
+    ],
 };
 
-
 const git = simpleGit();
-const func = new CustomFunctions()
-const fileOperations = new FileOperations()
-const appRepository = InjectRepository(ApplicationEntity)
-const deploymentTrackerRepo = InjectRepository(DeploymentTrackerEntity)
-const containerRepository = InjectRepository(ContainerEntity)
 
-const logService = new LogsProvider()
-const webhookService = new WebhookService()
+const func = new CustomFunctions();
+const fileOperations = new FileOperations();
+const appRepository = InjectRepository(ApplicationEntity);
+const deploymentTrackerRepo = InjectRepository(DeploymentTrackerEntity);
+const containerRepository = InjectRepository(ContainerEntity);
+const activeServicesRepository = InjectRepository(ActiveServicesEntity);
+
+const logService = new LogsProvider();
+const webhookService = new WebhookService();
 const deploymentTracker: Record<string, DeploymentState> = {};
 // https://hub.docker.com/v2/repositories/library/nginx/tags?page_size=1&page=1&ordering=last_updated&name=
 class DepploymentService {
     async stopDeploy(applicationId: string) {
-        const currentApp = deploymentTracker[`app::${applicationId}`]
+        const currentApp = deploymentTracker[`app::${applicationId}`];
         if (currentApp.status === "in-progress") {
-            currentApp.abortController?.abort()
-            deploymentTrackerRepo.update({ application: { id: +applicationId } }, { status: "cancelled" })
+            currentApp.abortController?.abort();
+            deploymentTrackerRepo.update(
+                { application: { id: +applicationId } },
+                { status: "cancelled" }
+            );
         }
     }
-    async deployApplication(applicationId: string, socketId: string): Promise<void> {
+    async deployApplication(
+        applicationId: string,
+        socketId: string
+    ): Promise<void> {
         // Check if there's an ongoing deployment
-        const trackerResult = await deploymentTrackerRepo.findOne({ where: { application: { id: +applicationId } } })
+        const trackerResult = await deploymentTrackerRepo.findOne({
+            where: { application: { id: +applicationId } },
+        });
+        // if there's  any ongoing deployment
+        if (
+            deploymentTracker[`app::${trackerResult?.deployment_id}`]?.status ===
+            "in-progress"
+        ) {
+            logService.emitLog(
+                socketId,
+                trackerResult!.id,
+                `Checking if there is another deployment is going...`,
+                "info"
+            );
+            logService.emitLog(
+                socketId,
+                trackerResult!.id,
+                `Another deployment is in progress for application ${applicationId}`,
+                "info"
+            );
 
-        if (deploymentTracker[`app::${trackerResult?.deployment_id}`]?.status === "in-progress") {
-            logService.emitLog(socketId, trackerResult!.id, `Checking if there is another deployment is going...`, "info");
-            logService.emitLog(socketId, trackerResult!.id, `Another deployment is in progress for application ${applicationId}`, "info");
-
-            logService.emitLog(socketId, trackerResult!.id, `Cancelling current deployment for application ${applicationId}`, "warn");
+            logService.emitLog(
+                socketId,
+                trackerResult!.id,
+                `Cancelling current deployment for application ${applicationId}`,
+                "warn"
+            );
 
             // Cancel the current deployment
-            deploymentTracker[`app::${trackerResult!.deployment_id}`].abortController?.abort();
-            deploymentTracker[`app::${trackerResult!.deployment_id}`].status = "cancelled";
-            deploymentTrackerRepo.update({ id: trackerResult?.id }, { status: "cancelled" })
-            logService.emitLog(socketId, trackerResult!.id, `Cancelled the current deployment for application ${applicationId}`, "warn");
-
+            deploymentTracker[
+                `app::${trackerResult!.deployment_id}`
+            ].abortController?.abort();
+            deploymentTracker[`app::${trackerResult!.deployment_id}`].status =
+                "cancelled";
+            deploymentTrackerRepo.update(
+                { id: trackerResult?.id },
+                { status: "cancelled" }
+            );
+            logService.emitLog(
+                socketId,
+                trackerResult!.id,
+                `Cancelled the current deployment for application ${applicationId}`,
+                "warn"
+            );
         }
-        // Initialize new deployment state
+        // Initialize new abort controller
         const abortController = new AbortController();
 
+        // Initialize new deployment state
+        const deployment = await deploymentTrackerRepo.save({
+            deployment_id: helpers.SimpleHash(),
+            application: { id: +applicationId },
+            started_at: new Date().toISOString(),
+            status: DeploymentStatus.PENDING,
+        });
+        logService.emitLog(
+            socketId,
+            deployment.id,
+            `Initializing new deployment`,
+            "info"
+        );
 
-        const deployment = await deploymentTrackerRepo.save({ deployment_id: helpers.SimpleHash(), application: { id: +applicationId }, started_at: new Date().toISOString(), status: DeploymentStatus.PENDING })
-        logService.emitLog(socketId, deployment.id, `Initializing new deployment`, "info");
+        //set deployment tracker
+        deploymentTracker[`app::${deployment.deployment_id}`] = {
+            status: "in-progress",
+            abortController,
+        };
 
-
-        deploymentTracker[`app::${deployment.deployment_id}`] = { status: "in-progress", abortController };
-
+        // find the appplication info for deployment info
         const application = await appRepository.findOne({
-            where: { id: +applicationId }, relations: ["project", "containers"], select: {
+            where: { id: +applicationId },
+            relations: ["project", "containers"],
+            select: {
                 project: {
                     id: true,
-                    project_path: true
-                }
-            }
+                    project_path: true,
+                },
+            },
         });
 
         try {
             if (!application) throw new Error("Application not found");
             await this.simulateWork(deployment.deployment_id, abortController.signal);
 
-            if (abortController.signal.aborted) throw new Error("Deployment cancelled, New Deployment is Requested");
+            if (abortController.signal.aborted)
+                throw new Error("Deployment cancelled, New Deployment is Requested");
 
             // Cancellation check during provisioning process
             // Trigger provisioning webhook
-            await webhookService.triggerWebhook(application.id, WebhookStatus.PROVISIONING, {
-                applicationId: application.id,
-                status: "provisioning",
-            });
+            await webhookService.triggerWebhook(
+                application.id,
+                WebhookStatus.PROVISIONING,
+                {
+                    applicationId: application.id,
+                    status: "provisioning",
+                }
+            );
 
-
-            // Update application status            
+            // Update application status
             application.status = ApplicationDeploymentStatus.PROVISIONING;
             await appRepository.save(application);
 
-            logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.PROVISIONING)
-            logService.emitLog(socketId, deployment.id, `Provisioning new Application State...`, "info");
+            logService
+                .socket()
+                .to(socketId)
+                .emit(
+                    SOCKET_EVENTS.DEPLOYMENT_STATUS,
+                    ApplicationDeploymentStatus.PROVISIONING
+                );
+            logService.emitLog(
+                socketId,
+                deployment.id,
+                `Provisioning new Application State...`,
+                "info"
+            );
 
             // Trigger building webhook
-            await webhookService.triggerWebhook(application.id, WebhookStatus.PROVISIONING, {
-                applicationId: application.id,
-                status: ApplicationDeploymentStatus.BUILDING,
-            });
-
+            await webhookService.triggerWebhook(
+                application.id,
+                WebhookStatus.PROVISIONING,
+                {
+                    applicationId: application.id,
+                    status: ApplicationDeploymentStatus.BUILDING,
+                }
+            );
+            // update the deployment status
             application.status = ApplicationDeploymentStatus.BUILDING;
             await appRepository.save(application);
 
-            logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.BUILDING)
-            logService.emitLog(socketId, deployment.id, `Start Building Application...`, "info");
+            logService
+                .socket()
+                .to(socketId)
+                .emit(
+                    SOCKET_EVENTS.DEPLOYMENT_STATUS,
+                    ApplicationDeploymentStatus.BUILDING
+                );
+            logService.emitLog(
+                socketId,
+                deployment.id,
+                `Start Building Application...`,
+                "info"
+            );
 
             // Build logic
-            const directory = application.project.project_path
-            const applicationId = String(application.id)
-            let msg = ""
+            const directory = application.project.project_path;
+            const applicationId = String(application.id);
+            let msg = "";
             if (!application.selectedRepo) {
-                logService.emitLog(socketId, deployment.id, "Repository URL is required for Nixpacks.", "error");
+                logService.emitLog(
+                    socketId,
+                    deployment.id,
+                    "Repository URL is required for Nixpacks.",
+                    "error"
+                );
                 return;
             }
-            if (existsSync(`${application.project.project_path}/${application.application_name}`)) {
-                logService.emitLog(socketId, deployment.id, "Directory already exists, cleaning up...", "info");
+            if (
+                existsSync(
+                    `${application.project.project_path}/${application.application_name}`
+                )
+            ) {
+                logService.emitLog(
+                    socketId,
+                    deployment.id,
+                    "Directory already exists, cleaning up...",
+                    "info"
+                );
                 // rmdir(pathWhereRepoToBeCloned,(err:any)=>{
                 //     logService.emitLog(socketId, application.id.toString(), "Directory already exists, cleaning up...", "info");
                 //     if(err){
@@ -138,103 +265,202 @@ class DepploymentService {
                 //     }
                 //     logService.emitLog(socketId, application.id.toString(), "Cleaning up directory completed.", "info");
                 // })
-                await this.executeCommand(`rm -rf ${application.project.project_path}/${application.application_name}`, socketId, deployment.id, "Cleaning up directory completed.")
+                await this.executeCommand(
+                    `rm -rf ${application.project.project_path}/${application.application_name}`,
+                    socketId,
+                    deployment.id,
+                    "Cleaning up directory completed."
+                );
             }
+            // if app  upload via zip
             if (application.source_type === "zip") {
-                const uploadPath = `${application.project.project_path}/${application.application_name}/${application.file.file_name}`
-                logService.emitLog(socketId, deployment.id, "Extracting ZIP file...", "info");
-
-                await fileOperations.extractZip(uploadPath,
+                const uploadPath = `${application.project.project_path}/${application.application_name}/${application.file.file_name}`;
+                logService.emitLog(
+                    socketId,
+                    deployment.id,
+                    "Extracting ZIP file...",
+                    "info"
+                );
+                // extrac  the zip
+                await fileOperations.extractZip(
+                    uploadPath,
                     `${application.project.project_path}/${application.application_name}`,
-                    (msg: string) => logService.emitLog(socketId, deployment.id, msg, "info")
-                )
-                logService.emitLog(socketId, deployment.id, "Extraction of ZIP file completed.", "info");
-
+                    (msg: string) =>
+                        logService.emitLog(socketId, deployment.id, msg, "info")
+                );
+                logService.emitLog(
+                    socketId,
+                    deployment.id,
+                    "Extraction of ZIP file completed.",
+                    "info"
+                );
             } else {
-                logService.emitLog(socketId, deployment.id, `Cloning repository: ${application.selectedRepo}`, "info");
-                await git.clone(application.selectedRepo, `${application.project.project_path}/${application.application_name}`, {})
+                logService.emitLog(
+                    socketId,
+                    deployment.id,
+                    `Cloning repository: ${application.selectedRepo}`,
+                    "info"
+                );
+                // check the repo is private or not if yes the it must  cloned from github using tooken for now file db
+                if (application.metadata.is_repo_private) {
+                    await githubService.cloneRepository(application.selectedRepo);
+                } else {
+                    await git.clone(
+                        application.selectedRepo,
+                        `${application.project.project_path}/${application.application_name}`,
+                        {}
+                    );
+                }
 
-                logService.emitLog(socketId, deployment.id, `Repository Successfully Cloned...`, "info");
-
+                logService.emitLog(
+                    socketId,
+                    deployment.id,
+                    `Repository Successfully Cloned...`,
+                    "info"
+                );
             }
             switch (application.selectedBuilder) {
-
                 case "nixpack":
-                    logService.emitLog(socketId, deployment.id, "Checking if Nixpack is installed...", "info");
+                    logService.emitLog(
+                        socketId,
+                        deployment.id,
+                        "Checking if Nixpack is installed...",
+                        "info"
+                    );
                     if (!SystemOperations.isPackageInstalled("nixpacks")) {
-                        logService.emitLog(socketId, deployment.id, "Installing Nixpack", "info");
-                        this.executeCommand("curl -sSL https://nixpacks.com/install.sh | bash", socketId, deployment.id, "Nixpack installed Successfully");
-
+                        logService.emitLog(
+                            socketId,
+                            deployment.id,
+                            "Installing Nixpack",
+                            "info"
+                        );
+                        this.executeCommand(
+                            "curl -sSL https://nixpacks.com/install.sh | bash",
+                            socketId,
+                            deployment.id,
+                            "Nixpack installed Successfully"
+                        );
                     }
-                    logService.emitLog(socketId, deployment.id, "Checking if Docker is installed...", "info");
+                    logService.emitLog(
+                        socketId,
+                        deployment.id,
+                        "Checking if Docker is installed...",
+                        "info"
+                    );
                     if (!SystemOperations.isPackageInstalled("docker")) {
-                        logService.emitLog(socketId, deployment.id, "Please Docker Install Docker First.", "info");
+                        logService.emitLog(
+                            socketId,
+                            deployment.id,
+                            "Please Docker Install Docker First.",
+                            "info"
+                        );
                         throw new Error("Docker not installed");
                     }
-                    msg = `Building application with NixPack in ${directory}`
-                    logService.emitLog(socketId, deployment.id, msg, "info")
+                    msg = `Building application with NixPack in ${directory}`;
+                    logService.emitLog(socketId, deployment.id, msg, "info");
                     await this.deployViaNixpack(application, socketId, deployment.id);
                     break;
                 case "docker":
                     await this.deployViaDocker(application, socketId, deployment.id);
                     break;
                 case "default":
-                    await this.directDeployment(application, socketId, deployment.id)
+                    await this.directDeployment(application, socketId, deployment.id);
                     break;
 
                 default:
-                    logService.emitLog(socketId, deployment.id, "Invalid deployment type. Only Nixpack and Git are supported", "error");
+                    logService.emitLog(
+                        socketId,
+                        deployment.id,
+                        "Invalid deployment type. Only Nixpack and Git are supported",
+                        "error"
+                    );
             }
-            logService.emitLog(socketId, deployment.id, `Deploying Application...`, "info");
+            logService.emitLog(
+                socketId,
+                deployment.id,
+                `Deploying Application...`,
+                "info"
+            );
             application.status = ApplicationDeploymentStatus.DEPLOYING;
             await appRepository.save(application);
-            logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.DEPLOYING)
-            const container_name = helpers.uuid_v4()
-            const app_name = `${application.application_name}`
-            const ci = new ContainerEntity()
+            logService
+                .socket()
+                .to(socketId)
+                .emit(
+                    SOCKET_EVENTS.DEPLOYMENT_STATUS,
+                    ApplicationDeploymentStatus.DEPLOYING
+                );
+            const container_name = helpers.uuid_v4();
+            const app_name = `${application.application_name}`;
+            const ci = new ContainerEntity();
 
             if (application.selectedBuilder === "direct") {
-                const uniqueAppId =  `${application.application_id}::${deployment.id}`
-                const startCommand = COMMANDS.PM2.ADD_APP
-                    .replace('{startScript}', application.commands.start_command)
-                    .replace('{tag}',uniqueAppId)
+                const uniqueAppId = `${application.application_id}::${deployment.id}`;
+                const startCommand = COMMANDS.PM2.ADD_APP.replace(
+                    "{startScript}",
+                    application.commands.start_command
+                ).replace("{tag}", uniqueAppId);
                 const now = new Date();
                 const date = formatDate(now);
                 const logPath = path.join(LOG_DIR, `${date}.log`);
 
-
-                await this.executeCommand(`${startCommand} --log ${logPath}`, socketId, deployment.id, "Application started successfully", `${application.project.project_path}/${app_name}`)
-                logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.RUNNING)
-                await appRepository.update({ id: +applicationId },
-                     { status: ApplicationDeploymentStatus.RUNNING,
-                        metadata:{
+                await this.executeCommand(
+                    `${startCommand} --log ${logPath}`,
+                    socketId,
+                    deployment.id,
+                    "Application started successfully",
+                    `${application.project.project_path}/${app_name}`
+                );
+                logService
+                    .socket()
+                    .to(socketId)
+                    .emit(
+                        SOCKET_EVENTS.DEPLOYMENT_STATUS,
+                        ApplicationDeploymentStatus.RUNNING
+                    );
+                await appRepository.update(
+                    { id: +applicationId },
+                    {
+                        status: ApplicationDeploymentStatus.RUNNING,
+                        metadata: {
                             ...application.metadata,
-                            application_deployment_name:uniqueAppId
-                        }
-                        
-
-                      });
-                await this.executeCommand(`pm2 save`, socketId, deployment.id, "Backup Created")
-
-            } else {
-
-                application.containers.length > 0 && application.containers.filter(async (container) => {
-                    // stop the container
-                    if (container.container_status === ContainerStatus.RUNNING || container.is_primary) {
-                        {
-                            await containersService.getContainer(container.name).stop()
-                            await containerRepository.update({ id: container.id, }, {
-                                container_status: ContainerStatus.STOPPED,
-                                stopped_at: new Date().toISOString(),
-                                is_primary: false,                               
-                            })                              
-                        }
+                            application_deployment_name: uniqueAppId,
+                        },
                     }
-                })
+                );
+                await this.executeCommand(
+                    `pm2 save`,
+                    socketId,
+                    deployment.id,
+                    "Backup Created"
+                );
+            } else {
+                application.containers.length > 0 &&
+                    application.containers.filter(async (container) => {
+                        // stop the container
+                        if (
+                            container.container_status === ContainerStatus.RUNNING ||
+                            container.is_primary
+                        ) {
+                            {
+                                await containersService.getContainer(container.name).stop();
+                                await containerRepository.update(
+                                    { id: container.id },
+                                    {
+                                        container_status: ContainerStatus.STOPPED,
+                                        stopped_at: new Date().toISOString(),
+                                        is_primary: false,
+                                    }
+                                );
+                            }
+                        }
+                    });
                 const container = await containersService.createContainer({
                     Image: `${application.application_id}_img:latest`,
                     name: container_name,
-                    Env: application.environment_variables.map(env => `${env.key}=${env.value}`),                  
+                    Env: application.environment_variables.map(
+                        (env) => `${env.key}=${env.value}`
+                    ),
                     HostConfig: {
                         PortBindings: {
                             [`${application.port}/tcp`]: [
@@ -242,21 +468,24 @@ class DepploymentService {
                                     HostIp: "0.0.0.0",
                                     HostPort: `${application.port}`,
                                 },
-                            ]
-                        }
+                            ],
+                        },
                     },
+                });
 
-                })
-
-
-                const inspect = await containersService.getContainer(container_name).inspect()
-                await containersService.getContainerLogs(container_name, logService.socket().sockets)
-                deployment.container_name = container.id
-                await deploymentTrackerRepo.save(deployment)
+                const inspect = await containersService
+                    .getContainer(container_name)
+                    .inspect();
+                await containersService.getContainerLogs(
+                    container_name,
+                    logService.socket().sockets
+                );
+                deployment.container_name = container.id;
+                await deploymentTrackerRepo.save(deployment);
 
                 const containerInstance = await containerRepository.save({
                     image: `${application.application_id}_img:latest`,
-                    name: container.id.substring(0,12),
+                    name: container.id.substring(0, 12),
                     application: {
                         id: application.id,
                     },
@@ -266,65 +495,127 @@ class DepploymentService {
                     started_at: new Date().toISOString(),
                     metadata: inspect,
                     is_primary: true,
-                })
-                ci.id = containerInstance.id
-                application.containers = [...application.containers,ci]
-                await container.start()
+                });
+                ci.id = containerInstance.id;
+                application.containers = [...application.containers, ci];
+                await container.start();
             }
 
-            logService.emitLog(socketId, deployment.id, `Application Deployed Successfully...`, "info");
+            logService.emitLog(
+                socketId,
+                deployment.id,
+                `Application Deployed Successfully...`,
+                "info"
+            );
             application.status = ApplicationDeploymentStatus.DEPLOYED;
 
             await appRepository.save(application);
-            logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.DEPLOYED)
-
+            logService
+                .socket()
+                .to(socketId)
+                .emit(
+                    SOCKET_EVENTS.DEPLOYMENT_STATUS,
+                    ApplicationDeploymentStatus.DEPLOYED
+                );
 
             application.status = ApplicationDeploymentStatus.RUNNING;
-            const tempSubDomain = uniqueNamesGenerator(config)
-            subdomainPortMap[tempSubDomain] = +application.port
-            const tempDomain=`https://${tempSubDomain}.${CONFIG.APP.APP_DOMAIN}`
-            application.selected_domain =  tempDomain
-            application.custom_domains = [...application.custom_domains,tempDomain]
+            const tempSubDomain = uniqueNamesGenerator(config);
+            subdomainPortMap[tempSubDomain] = +application.port;
+            const tempDomain = `https://${tempSubDomain}.${CONFIG.APP.APP_DOMAIN}`;
+            application.selected_domain = tempDomain;
+            application.custom_domains = [...application.custom_domains, tempDomain];
             await appRepository.save(application);
-            logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.RUNNING)
+            logService
+                .socket()
+                .to(socketId)
+                .emit(
+                    SOCKET_EVENTS.DEPLOYMENT_STATUS,
+                    ApplicationDeploymentStatus.RUNNING
+                );
 
-            delete deploymentTracker[`app::${applicationId}`]
-            deployment.status = DeploymentStatus.ACTIVE
-            deployment.ended_at = new Date().toISOString()
-            await deploymentTrackerRepo.save(deployment)
-            logService.emitLog(socketId, deployment.id, `Custom Domain Assigned ${tempDomain}`, "info");
-            logService.emitLog(socketId, deployment.id, `Application Running Successfully... http://localhost:${application.port}`, "info");
-
+            delete deploymentTracker[`app::${applicationId}`];
+            deployment.status = DeploymentStatus.ACTIVE;
+            deployment.ended_at = new Date().toISOString();
+            await deploymentTrackerRepo.save(deployment);
+            logService.emitLog(
+                socketId,
+                deployment.id,
+                `Custom Domain Assigned ${tempDomain}`,
+                "info"
+            );
+            logService.emitLog(
+                socketId,
+                deployment.id,
+                `Application Running Successfully... http://localhost:${application.port}`,
+                "info"
+            );
         } catch (error: any) {
             if (error.message === "Deployment cancelled") {
-                logService.emitLog(socketId, deployment.id, `Deployment for application ${application?.application_name} was cancelled.`, "error");
-
+                logService.emitLog(
+                    socketId,
+                    deployment.id,
+                    `Deployment for application ${application?.application_name} was cancelled.`,
+                    "error"
+                );
             }
             if (error.message === "Application not found") {
-                logService.emitLog(socketId, deployment.id, `Deployment failed ${application?.application_name}: ` + error.toString(), "error");
-                logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.FAILED)
-                return
+                logService.emitLog(
+                    socketId,
+                    deployment.id,
+                    `Deployment failed ${application?.application_name}: ` +
+                    error.toString(),
+                    "error"
+                );
+                logService
+                    .socket()
+                    .to(socketId)
+                    .emit(
+                        SOCKET_EVENTS.DEPLOYMENT_STATUS,
+                        ApplicationDeploymentStatus.FAILED
+                    );
+                return;
             }
 
-            await webhookService.triggerWebhook(+applicationId, WebhookStatus.FAILED, {
-                applicationId,
-                status: ApplicationDeploymentStatus.FAILED,
-            });
+            await webhookService.triggerWebhook(
+                +applicationId,
+                WebhookStatus.FAILED,
+                {
+                    applicationId,
+                    status: ApplicationDeploymentStatus.FAILED,
+                }
+            );
             deploymentTracker[`app::${deployment.deployment_id}`].status = "failed";
-            deployment.status = DeploymentStatus.FAILED
-            deployment.ended_at = new Date().toISOString()
-            await deploymentTrackerRepo.save(deployment)
-            logService.emitLog(socketId, deployment.id, "Deployment failed: " + error.toString(), "error");
-            logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.FAILED)
-            await appRepository.update({ id: +applicationId }, { status: ApplicationDeploymentStatus.FAILED });
+            deployment.status = DeploymentStatus.FAILED;
+            deployment.ended_at = new Date().toISOString();
+            await deploymentTrackerRepo.save(deployment);
+            logService.emitLog(
+                socketId,
+                deployment.id,
+                "Deployment failed: " + error.toString(),
+                "error"
+            );
+            logService
+                .socket()
+                .to(socketId)
+                .emit(
+                    SOCKET_EVENTS.DEPLOYMENT_STATUS,
+                    ApplicationDeploymentStatus.FAILED
+                );
+            await appRepository.update(
+                { id: +applicationId },
+                { status: ApplicationDeploymentStatus.FAILED }
+            );
         }
     }
 
-    private async simulateWork(applicationId: string, signal: AbortSignal): Promise<void> {
+    private async simulateWork(
+        applicationId: string,
+        signal: AbortSignal
+    ): Promise<void> {
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
                 if (signal.aborted) return reject(new Error("Deployment aborted"));
-                delete deploymentTracker[applicationId]
+                delete deploymentTracker[applicationId];
                 resolve();
             }, 2000);
 
@@ -335,97 +626,167 @@ class DepploymentService {
         });
     }
 
-
-
-    private async directDeployment(application: ApplicationEntity, socketId: string, deployment_id: number): Promise<void> {
+    private async directDeployment(
+        application: ApplicationEntity,
+        socketId: string,
+        deployment_id: number
+    ): Promise<void> {
         try {
             if (application.useDockerfile) {
                 await this.deployViaDocker(application, socketId, deployment_id);
-                return
+                return;
             }
-            const path = application.path
-            const appName = application.application_name
-            const commands = application.commands
-            const applicationId = application.id.toString()
-            const directory = application.project.project_path
+            const path = application.path;
+            const appName = application.application_name;
+            const commands = application.commands;
+            const applicationId = application.id.toString();
+            const directory = application.project.project_path;
 
-            let pathWhereRepoToBeCloned = `${directory}/${appName}`
+            let pathWhereRepoToBeCloned = `${directory}/${appName}`;
 
-
-            if (path.root_directory.trim() === "" || path.root_directory.trim() === "./") {
+            if (
+                path.root_directory.trim() === "" ||
+                path.root_directory.trim() === "./"
+            ) {
             } else {
-                pathWhereRepoToBeCloned = `${pathWhereRepoToBeCloned}/${path.root_directory}`
+                pathWhereRepoToBeCloned = `${pathWhereRepoToBeCloned}/${path.root_directory}`;
             }
 
-            logService.emitLog(socketId, deployment_id, "Installing Dependencies", "info");
-            await this.executeCommand(`${commands.install_command}`, socketId, deployment_id, "Dependencies Installed", pathWhereRepoToBeCloned);
+            logService.emitLog(
+                socketId,
+                deployment_id,
+                "Installing Dependencies",
+                "info"
+            );
+            await this.executeCommand(
+                `${commands.install_command}`,
+                socketId,
+                deployment_id,
+                "Dependencies Installed",
+                pathWhereRepoToBeCloned
+            );
 
-            logService.emitLog(socketId, deployment_id, "Starting Build Process...", "info");
-            await this.executeCommand(`${commands.build_command}`, socketId, deployment_id, "Build completed successfully", pathWhereRepoToBeCloned)
+            logService.emitLog(
+                socketId,
+                deployment_id,
+                "Starting Build Process...",
+                "info"
+            );
+            await this.executeCommand(
+                `${commands.build_command}`,
+                socketId,
+                deployment_id,
+                "Build completed successfully",
+                pathWhereRepoToBeCloned
+            );
 
-            logService.socket().to(socketId).emit(SOCKET_EVENTS.DEPLOYMENT_STATUS, ApplicationDeploymentStatus.DEPLOYING)
-            await appRepository.update({ id: +applicationId }, { status: ApplicationDeploymentStatus.DEPLOYING });
-
-
-
-        } catch (error) {
-            throw error
-        }
-    }
-
-    private async deployViaNixpack(application: ApplicationEntity, socketId: string, deployment_id: number) {
-        try {
-
-            const project_path = application.project.project_path
-
-            const pathWhereRepoToBeCloned = `${project_path}/${application.application_name}`
-
-
-            // await this.executeCommand(`git clone ${application.selectedRepo} ${pathWhereRepoToBeCloned}`, socketId, deployment_id, "Repository Clone Successfully");
-            const prepComd = `-b '${application.commands.build_command}' -i '${application.commands.install_command}' -s '${application.commands.start_command}'`
-
-
-            await this.executeCommand(`nixpacks plan . -f toml > nixpacks.toml --env NIXPACKS_NODE_VERSION=22 ${prepComd}`, socketId, deployment_id, "Nixpack Plan Generated.", pathWhereRepoToBeCloned);
-            const nixpackJson = readFileSync(`${pathWhereRepoToBeCloned}/nixpacks.toml`, 'utf8');
-
-
-            const nixpacksPlan = toml.parse(nixpackJson) as NixpackPlan
-            nixpacksPlan.phases.setup.nixPkgs[0] = "nodejs_22"
-            writeFileSync(`${pathWhereRepoToBeCloned}/nixpacks.json`, JSON.stringify(nixpacksPlan, null, 2), 'utf8');
-            // const { buildCommand, is_node, serveCommand, type } = await func.detectApplicationType(pathWhereRepoToBeCloned)
-            logService.emitLog(socketId, deployment_id, "Start Building Nixpacks Image", "info");
-            const image_name = `${application.application_id}_img:latest`
-
-            let nixPackBuildCommand = `nixpacks build . --name ${image_name} ${prepComd} --config=nixpacks.json`
-            if (application.useDockerfile) {
-                const { dockerfilePath, tag, ports } = application.docker_metadata
-                if (!execFileSync(`${pathWhereRepoToBeCloned}/${dockerfilePath}`)) {
-                    logService.emitLog(socketId, deployment_id, `Dockerfile not found at  /${dockerfilePath}\n Please check the Dockerfile path`, "error");
-                    return;
-                }
-
-                nixPackBuildCommand = `${nixPackBuildCommand} --dockerfile ${dockerfilePath} --tag ${tag} --ports ${ports}`
-            }
-            await this.executeCommand(`${nixPackBuildCommand}`, socketId, deployment_id, "Nixpack Building completed.", pathWhereRepoToBeCloned);
-
+            logService
+                .socket()
+                .to(socketId)
+                .emit(
+                    SOCKET_EVENTS.DEPLOYMENT_STATUS,
+                    ApplicationDeploymentStatus.DEPLOYING
+                );
+            await appRepository.update(
+                { id: +applicationId },
+                { status: ApplicationDeploymentStatus.DEPLOYING }
+            );
         } catch (error) {
             throw error;
         }
     }
 
-    private async deployViaDocker(application: ApplicationEntity, socketId: string, deployment_id: number) {
-        let ports = ""
-        let tags = "latest"
-        const project_path = application.project.project_path
-        const pathWhereRepoToBeCloned = `${project_path}/${application.application_name}`
+    private async deployViaNixpack(
+        application: ApplicationEntity,
+        socketId: string,
+        deployment_id: number
+    ) {
+        try {
+            const project_path = application.project.project_path;
+
+            const pathWhereRepoToBeCloned = `${project_path}/${application.application_name}`;
+
+            // await this.executeCommand(`git clone ${application.selectedRepo} ${pathWhereRepoToBeCloned}`, socketId, deployment_id, "Repository Clone Successfully");
+            const prepComd = `-b '${application.commands.build_command}' -i '${application.commands.install_command}' -s '${application.commands.start_command}'`;
+
+            await this.executeCommand(
+                `nixpacks plan . -f toml > nixpacks.toml --env NIXPACKS_NODE_VERSION=22 ${prepComd}`,
+                socketId,
+                deployment_id,
+                "Nixpack Plan Generated.",
+                pathWhereRepoToBeCloned
+            );
+            const nixpackJson = readFileSync(
+                `${pathWhereRepoToBeCloned}/nixpacks.toml`,
+                "utf8"
+            );
+
+            const nixpacksPlan = toml.parse(nixpackJson) as NixpackPlan;
+            nixpacksPlan.phases.setup.nixPkgs[0] = "nodejs_22";
+            writeFileSync(
+                `${pathWhereRepoToBeCloned}/nixpacks.json`,
+                JSON.stringify(nixpacksPlan, null, 2),
+                "utf8"
+            );
+            // const { buildCommand, is_node, serveCommand, type } = await func.detectApplicationType(pathWhereRepoToBeCloned)
+            logService.emitLog(
+                socketId,
+                deployment_id,
+                "Start Building Nixpacks Image",
+                "info"
+            );
+            const image_name = `${application.application_id}_img:latest`;
+
+            let nixPackBuildCommand = `nixpacks build . --name ${image_name} ${prepComd} --config=nixpacks.json`;
+            if (application.useDockerfile) {
+                const { dockerfilePath, tag, ports } = application.docker_metadata;
+                if (!execFileSync(`${pathWhereRepoToBeCloned}/${dockerfilePath}`)) {
+                    logService.emitLog(
+                        socketId,
+                        deployment_id,
+                        `Dockerfile not found at  /${dockerfilePath}\n Please check the Dockerfile path`,
+                        "error"
+                    );
+                    return;
+                }
+
+                nixPackBuildCommand = `${nixPackBuildCommand} --dockerfile ${dockerfilePath} --tag ${tag} --ports ${ports}`;
+            }
+            await this.executeCommand(
+                `${nixPackBuildCommand}`,
+                socketId,
+                deployment_id,
+                "Nixpack Building completed.",
+                pathWhereRepoToBeCloned
+            );
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    private async deployViaDocker(
+        application: ApplicationEntity,
+        socketId: string,
+        deployment_id: number
+    ) {
+        let ports = "";
+        let tags = "latest";
+        const project_path = application.project.project_path;
+        const pathWhereRepoToBeCloned = `${project_path}/${application.application_name}`;
 
         if (application.useDockerfile) {
-            const { dockerfilePath, tag: customTag, ports: customPorts } = application.docker_metadata
+            const {
+                dockerfilePath,
+                tag: customTag,
+                ports: customPorts,
+            } = application.docker_metadata;
             if (!existsSync(`${pathWhereRepoToBeCloned}/${dockerfilePath}`)) {
-                throw new Error(`Dockerfile not found at  /${dockerfilePath}\n Please check the Dockerfile path`);
+                throw new Error(
+                    `Dockerfile not found at  /${dockerfilePath}\n Please check the Dockerfile path`
+                );
             }
-            tags = customTag ?? tags
-            ports = customPorts.join(" ")
+            tags = customTag ?? tags;
+            ports = customPorts.join(" ");
             return;
         }
 
@@ -434,34 +795,57 @@ class DepploymentService {
         //     pathWhereRepoToBeCloned = `${pathWhereRepoToBeCloned}/${path.root_directory}`
         // }
         if (!existsSync(`${pathWhereRepoToBeCloned}/.dockerignore`)) {
-            writeFileSync(`${pathWhereRepoToBeCloned}/.dockerignore`, this.prepareDockerIgnorContent(), { encoding: 'utf8' });
+            writeFileSync(
+                `${pathWhereRepoToBeCloned}/.dockerignore`,
+                this.prepareDockerIgnorContent(),
+                { encoding: "utf8" }
+            );
         }
-        const envType = await func.detectAppPackageEnvironment(pathWhereRepoToBeCloned)
-        const installCMD = envType === "bun" ? `npm install -g bun \\  \n && ${application.commands.install_command}`
-            : envType === "yarn" ? `npm install -g yarn \\ \n && ${application.commands.install_command}`
-                : envType === "pnpm" ? `npm install -g pnpm \\ \n&& ${application.commands.install_command}`
-                    : application.commands.install_command
-        logService.emitLog(socketId, deployment_id, "Building Docker Image", "info");
+        const envType = await func.detectAppPackageEnvironment(
+            pathWhereRepoToBeCloned
+        );
+        const installCMD =
+            envType === "bun"
+                ? `npm install -g bun \\  \n && ${application.commands.install_command}`
+                : envType === "yarn"
+                    ? `npm install -g yarn \\ \n && ${application.commands.install_command}`
+                    : envType === "pnpm"
+                        ? `npm install -g pnpm \\ \n&& ${application.commands.install_command}`
+                        : application.commands.install_command;
+        logService.emitLog(
+            socketId,
+            deployment_id,
+            "Building Docker Image",
+            "info"
+        );
         await this.prepareCustomDockerFile(pathWhereRepoToBeCloned, {
             BUILD: application.commands.build_command,
             PORT: [application.port],
             INSTALL: installCMD,
-            START: (application.commands.start_command || "npm run start").split(' '),
+            START: (application.commands.start_command || "npm run start").split(" "),
             NODE_VERSION: "node:22",
-        })
-      
-        const dockerBuildCommand = `cd ${pathWhereRepoToBeCloned} && docker build  . -t ${application.application_id}_img:latest -f Dockerfile  --no-cache`;
+        });
 
+        const dockerBuildCommand = `cd ${pathWhereRepoToBeCloned} && docker build  . -t ${application.application_id}_img:latest -f Dockerfile  --no-cache`;
 
         // if (application.docker_metadata?.ports) {
         //     for (let value of application.docker_metadata.ports) {
         //         ports += `-p ${value}:${value} `
         //     }
         // }
-        await this.executeCommand(dockerBuildCommand, socketId, deployment_id, "Docker deployment completed.");
+        await this.executeCommand(
+            dockerBuildCommand,
+            socketId,
+            deployment_id,
+            "Docker deployment completed."
+        );
     }
 
-    private async autoDeploy(application: ApplicationEntity, socketId: string, deployment_id: number) {
+    private async autoDeploy(
+        application: ApplicationEntity,
+        socketId: string,
+        deployment_id: number
+    ) {
         try {
             // logService.emitLog(socketId, deployment_id, `Cloning repository: ${repoUrl}`, "info");
             // const command = `git clone ${repoUrl} ${appName}`;
@@ -470,7 +854,12 @@ class DepploymentService {
             // const deployCommand = `cd ${appName} && npx nixpacks build .`
             // this.executeCommand(deployCommand, socketId, deployment_id, "Nixpack Build Successfull");
         } catch (error: any) {
-            logService.emitLog(socketId, deployment_id, `Error: ${error.message}`, "error");
+            logService.emitLog(
+                socketId,
+                deployment_id,
+                `Error: ${error.message}`,
+                "error"
+            );
             throw error;
         }
     }
@@ -486,13 +875,15 @@ class DepploymentService {
         });
     }
     async rollbackApplication(applicationId: number): Promise<void> {
-        const application = await appRepository.findOne({ where: { id: applicationId } });
+        const application = await appRepository.findOne({
+            where: { id: applicationId },
+        });
         if (!application) throw new Error("Application not found");
 
-        const latestLog = await logService.latestLog(applicationId)
+        const latestLog = await logService.latestLog(applicationId);
 
-        if (!latestLog) throw new Error("No previous successful deployment found for rollback");
-
+        if (!latestLog)
+            throw new Error("No previous successful deployment found for rollback");
 
         try {
             // Rollback logic based on selected builder
@@ -502,20 +893,22 @@ class DepploymentService {
             //     .where('deployment.deployment_id = :deploymentId', { deploymentId })
             //     .andWhere('container.container_status = :status', { status: 'running' })
             //     .getOne();
-
             //   if (!lastSuccessfulDeployment) {
             //     throw new Error('No previous deployment found to rollback');
             //   }
-
-
         } catch (error: any) {
             throw error;
         }
     }
 
-    async executeCommand(command: string, socketId: string, deployment_id: number, successMessage: string, cwd: string = DEPLOYMENT_DIR): Promise<void> {
+    async executeCommand(
+        command: string,
+        socketId: string,
+        deployment_id: number,
+        successMessage: string,
+        cwd: string = DEPLOYMENT_DIR
+    ): Promise<void> {
         return new Promise((resolve, reject) => {
-
             const process = spawn(command, { shell: "bash", cwd });
 
             process.stdout.on("data", (data) => {
@@ -531,110 +924,61 @@ class DepploymentService {
                     logService.emitLog(socketId, deployment_id, successMessage, "info");
                     resolve();
                 } else {
-                    logService.emitLog(socketId, deployment_id, `Process exited with code ${code}.`, "error");
+                    logService.emitLog(
+                        socketId,
+                        deployment_id,
+                        `Process exited with code ${code}.`,
+                        "error"
+                    );
                     reject(new Error(`Process exited with code ${code}`));
                 }
             });
 
             process.on("error", (err) => {
-                logService.emitLog(socketId, deployment_id, `Process failed: ${err.message}`, "error");
+                logService.emitLog(
+                    socketId,
+                    deployment_id,
+                    `Process failed: ${err.message}`,
+                    "error"
+                );
                 reject(err);
             });
         });
     }
 
-    async prepareCustomDockerFile(writeDockerFilePath: string, args: {
-
-        BUILD: string;
-        PORT: string[];
-        INSTALL: string;
-        START: string[];
-        NODE_VERSION: string;
-    }) {
+    async prepareCustomDockerFile(
+        writeDockerFilePath: string,
+        args: {
+            BUILD: string;
+            PORT: string[];
+            INSTALL: string;
+            START: string[];
+            NODE_VERSION: string;
+        }
+    ) {
         const dockerfilePath = path.join(writeDockerFilePath, "Dockerfile");
-        const templatePath = path.join(process.cwd(), "src", "utils", "libs", "data", "DockerFile.hbs");
+        const templatePath = path.join(
+            process.cwd(),
+            "src",
+            "utils",
+            "libs",
+            "data",
+            "DockerFile.hbs"
+        );
         const template = readFileSync(templatePath, "utf8");
-        hbs.registerHelper('raw', function (options) {
+        hbs.registerHelper("raw", function (options) {
             return options.fn();
         });
         const variables = this.prepareCustomVariablesJson(args);
         const compiledTemplate = hbs.compile(template);
         const result = compiledTemplate(variables);
         writeFileSync(dockerfilePath, result, {
-            encoding: 'utf8'
+            encoding: "utf8",
         });
     }
-    async prepareCustomNixpacksJson(writeNixpacksJsonPath: string) {
 
-    }
     private prepareDockerIgnorContent(): string {
-        return `.vscode         
-Makefile
-README.md
-.env
-*.env
-*.log
-dist
-build
-out
-export
-node_modules
-.dockerignore
-.DS_Store
-.git
-.github
-.gitignore
-.gitlab-ci.yml
-.gitmodules
-.idea
-.data
-.sass-cache
-tests
-README.md
-Dockerfile
-Dockerfile.archive
-docker-compose.yml
-
-*/temp*
-*/*/temp*
-docker
-.vagrant
-.data
-.idea
-app/sessions/*
-app/logs/*
-app/cache/*
-app/gen-src/*
-app/conf/config.yml
-app/*.zip
-app/*.sql
-app/*.tar.gz
-*.zip
-*.sql
-*.log
-*.tar.gz
-themes/*/build
-themes/*/node_modules
-themes/*/app
-*/*/*/node_modules
-files/*
-web/files/*
-*/*/*/src-img
-*/*/src-img
-*/*.log
-Vagrantfile
-pimple.json
-
-!vendor
-!app/gen-src/GeneratedNodeSources/.gitignore
-!app/gen-src/Proxies/.gitignore
-!docker/php-nginx-alpine/crontab.txt
-!docker/php-nginx-alpine/before_launch.sh
-!themes/BaseTheme/static
-!themes/BaseTheme/Resources/views/partials/*
-!themes/BaseTheme/Resources/views/base.html.twig
-!web/themes/*
-        `
+        return SERVER_DATA.GIT__IGNORE__CONTENT;
     }
     private prepareCustomVariablesJson(variables: {
         BUILD: string;
@@ -652,10 +996,238 @@ pimple.json
         };
         return customVariablesJson;
     }
-    emitEvent(eventName: string,message: string): void {
-        logService.socket().emit(eventName, message)
+    emitEvent(eventName: string, message: string): void {
+        logService.socket().emit(eventName, message);
     }
-    
+    async deployNewService(data: string) {
+        const activeServicesPayload = JSON.parse(data) as ActiveServicesEntity;
+        AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, "Deploying services");
+        try {
+            await containersService.pullAnyImage(activeServicesPayload.service_metadata.imageName, (msg: string) => AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, msg));
+            const containerConfig = this.createContainerConfig(activeServicesPayload.service_metadata.imageName, activeServicesPayload.credentials);
+            const container = await containersService.createContainer(containerConfig);
+            await containersService.startContainer(container.id);
+            if (activeServicesPayload.service_metadata.imageName === "stalwartlabs/mail-server:latest") {
+                const log = await container.logs()
+                const credentials = this.extractAdminCredentials(log.toString());
+                if (credentials) {
+                    activeServicesPayload.credentials = {
+                        password: credentials?.password,
+                        username: credentials?.admin
+                    }
+                }
+
+            }
+
+            activeServicesPayload.status = ContainerStatus.RUNNING;
+            activeServicesPayload.container_metadata = await container.inspect();
+            activeServicesPayload.container_id = container.id.substring(0, 12);
+            activeServicesPayload.started_at = new Date().toISOString();
+            activeServicesRepository.save(activeServicesPayload);
+        } catch (error: any) {
+            AppEvents.emit(EVENT_CONSTANTS.LOGS.ERROR, error.message);
+            activeServicesPayload.status = ContainerStatus.EXITED;
+            activeServicesRepository.save(activeServicesPayload);
+        }
+    }
+    private extractAdminCredentials = (str: string): { admin: string; password: string } | null => {
+
+        const adminRegex = /Your administrator account is '(.+?)'/;
+        const passwordRegex = /password '(.+?)'/;
+
+
+        const adminMatch = str.match(adminRegex);
+        const passwordMatch = str.match(passwordRegex);
+
+
+        if (adminMatch && passwordMatch) {
+            return {
+                admin: adminMatch[1],
+                password: passwordMatch[1],
+            };
+        }
+
+        return null;
+    };
+    private createContainerConfig(type: DockerServiceImages, credentials: any) {
+        let containerConfig: null | any = null;
+        switch (type) {
+            case "postgres:latest":
+                containerConfig = this.createPostgresContainerConfig(
+                    credentials.username,
+                    credentials.password
+                );
+                break;
+            case "mysql:latest":
+                containerConfig = this.createMySql(
+                    credentials.username,
+                    credentials.password
+                );
+                break;
+            case "mongo:latest":
+                containerConfig = this.createMongoConfig(
+                    credentials.username,
+                    credentials.password
+                );
+                break;
+            case "redis:latest":
+                containerConfig = this.createMailContainerConfig()
+                break;
+            case "stalwartlabs/mail-server:latest":
+                throw new Error(`This Service is not available`);
+
+            default:
+                throw new Error(`Unsupported application type:`);
+        }
+        return containerConfig;
+    }
+    private createMailContainerConfig() {
+
+        return {
+            Image: "stalwartlabs/mail-server:latest",
+            name: "mail-server",
+            ExposedPorts: {
+                "443/tcp": {},
+                "8080/tcp": {},
+                "25/tcp": {},
+                "587/tcp": {},
+                "465/tcp": {},
+                "143/tcp": {},
+                "993/tcp": {},
+                "4190/tcp": {},
+                "110/tcp": {},
+                "995/tcp": {},
+            },
+
+            HostConfig: {
+                PortBindings: {
+                    "5432/tcp": [{ HostPort: "5432" }],
+                    "443/tcp": [{ HostPort: "443" }],
+                    "8080/tcp": [{ HostPort: "8080" }],
+                    "25/tcp": [{ HostPort: "25" }],
+                    "587/tcp": [{ HostPort: "587" }],
+                    "465/tcp": [{ HostPort: "465" }],
+                    "143/tcp": [{ HostPort: "143" }],
+                    "993/tcp": [{ HostPort: "993" }],
+                    "4190/tcp": [{ HostPort: "4190" }],
+                    "110/tcp": [{ HostPort: "110" }],
+                    "995/tcp": [{ HostPort: "995" }],
+                },
+                Binds: [
+                    `/var/lib/stalwart-mail:/opt/stalwart-mail`,
+                ],
+                RestartPolicy: {
+                    Name: "always",
+                },
+            },
+        };
+    }
+    private createPostgresContainerConfig(username: string, password: string) {
+        return {
+            Image: "postgres:latest",
+            name: "postgres-db-server",
+            ExposedPorts: {
+                "5432/tcp": {},
+            },
+            Env: [
+                `POSTGRES_PASSWORD=${password}`,
+                `POSTGRES_USER=${username}`,
+                `POSTGRES_DB=defaultdb`,
+            ],
+            HostConfig: {
+                PortBindings: {
+                    "5432/tcp": [{ HostPort: "5432" }],
+                },
+                Binds: [
+                    `${path.join(
+                        HOME_DIR,
+                        ".data",
+                        "pgsql-data"
+                    )}:/var/lib/postgresql/data`,
+                ],
+                RestartPolicy: {
+                    Name: "always",
+                },
+            },
+        };
+    }
+    private createMySql(username: string, password: string) {
+        return {
+            Image: "mysql:latest",
+            name: "mysql-db-server",
+            ExposedPorts: {
+                "3306/tcp": {},
+            },
+            Env: [
+                `MYSQL_ROOT_PASSWORD=${password}`,
+                `MYSQL_USER=${username}`,
+                `MYSQL_PASSWORD=${password}`,
+                `MYSQL_DATABASE=defaultdb`,
+            ],
+            HostConfig: {
+                PortBindings: {
+                    "3306/tcp": [{ HostPort: "3306" }],
+                },
+                Binds: [
+                    `${path.join(HOME_DIR, ".data", "mysql-data")}:/var/lib/mysql/data`,
+                ],
+                RestartPolicy: {
+                    Name: "always",
+                },
+            },
+        };
+    }
+    private createRedisConfig(username: string, password: string) {
+        return {
+            Image: "redis:latest",
+            name: "redis-db-server",
+            RestartPolicy: "unless-stopped",
+            HostConfig: {
+                PortBindings: {
+                    "6379/tcp": [
+                        {
+                            HostPort: "6379",
+                        },
+                    ],
+                },
+                Binds: [`${path.join(HOME_DIR, ".data", "redis_data")}:/redis_data`],
+            },
+            Cmd: [
+                "redis-server",
+                "--user",
+                username,
+                "--requirepass",
+                password,
+                "--protected-mode",
+                "yes",
+            ],
+        };
+    }
+    private createMongoConfig(username: string, password: string) {
+        return {
+            Image: "mongo:latest",
+            name: "mongo-db-server",
+            ExposedPorts: {
+                "27017/tcp": {},
+            },
+            Env: [
+                `MONGO_INITDB_ROOT_PASSWORD=${password}`,
+                `MONGO_INITDB_ROOT_USERNAME=${username}`,
+                `MONGO_INITDB_DATABASE=defaultdb`,
+            ],
+            HostConfig: {
+                PortBindings: {
+                    "27017/tcp": [{ HostPort: "27017" }],
+                },
+                Binds: [
+                    `${path.join(HOME_DIR, ".data", "mongo-data")}:/var/lib/mongo/db`,
+                ],
+                RestartPolicy: {
+                    Name: "always",
+                },
+            },
+        };
+    }
 }
 
 export default new DepploymentService();

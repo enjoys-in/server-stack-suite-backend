@@ -1,5 +1,7 @@
+import { homedir } from "os"
 import { join } from "path"
 export const DEPLOYMENT_DIR = process.env.HOME + "/deployments"
+export const HOME_DIR =  homedir()
 export const BUILD_PACKS={
     NIXPACKS:{
         build:"nixpack build . --name {name}",

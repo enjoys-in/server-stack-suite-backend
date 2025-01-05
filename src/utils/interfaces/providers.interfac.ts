@@ -15,3 +15,8 @@ export interface GithubAuthProviderResponse  {
   scope: string
   token_type: string
 }
+export interface FileBasedSession {
+  github:string
+  gitlab:undefined
+  bitbucket: undefined
+}
