@@ -3,8 +3,13 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 
 export class ErrorPage1731387584186 implements MigrationInterface {
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        const content = ` <!DOCTYPE html>
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    const result = await queryRunner.query(`SELECT * FROM error_pages WHERE name=$1`, ["default"])    
+    if (result) {
+      return
+    }
+
+    const content = ` <!DOCTYPE html>
         <html>
           <head>
             <title>Welcome to nginx!</title>
@@ -33,10 +38,10 @@ export class ErrorPage1731387584186 implements MigrationInterface {
             <p><em>Thank you for using nginx.</em></p>
           </body>
         </html> `
-        await queryRunner.query(`INSERT INTO error_pages (name, status, path,content) VALUES($1, $2, $3, $4)`, ['default', DEFAULT_STATUS.ACTIVE, "/", content]);
-    }
+    await queryRunner.query(`INSERT INTO error_pages (name, status, path,content) VALUES($1, $2, $3, $4)`, ['default', DEFAULT_STATUS.ACTIVE, "/", content]);
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-    }
+  public async down(queryRunner: QueryRunner): Promise<void> {
+  }
 
 }

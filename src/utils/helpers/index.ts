@@ -11,6 +11,20 @@ export let Tokens = new Map();
 export let BlacklistedTokens: string[] = [];
 export const SetAppRoutes = new Map();
 class Helpers {
+    transformKeys(obj:Array<Record<string,any>>|Record<string,any>,mapping:Record<string,string>):Record<string, any>{
+        if (Array.isArray(obj)) {
+            return obj.map(item => this.transformKeys(item, mapping));
+        }
+        if (typeof obj === 'object' && obj) {
+            const transformedObj: Record<string, any> = {};
+            Object.keys(obj).forEach(key => {
+                const newKey = mapping[key] || key;
+                transformedObj[newKey] = this.transformKeys(obj[key], mapping);
+            });
+            return transformedObj;
+        }
+        return obj;
+    }
     isValidSubdomain = (subdomain: string): boolean => validSubdomainRegex.test(subdomain);
     randomPort(runnigPorts: Record<any, any>, minPort: number, maxPort: number) {
         const port = Math.floor(Math.random() * (minPort - maxPort + 1)) + minPort;

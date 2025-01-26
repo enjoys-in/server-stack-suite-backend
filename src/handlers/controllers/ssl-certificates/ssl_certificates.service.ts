@@ -1,3 +1,4 @@
+import forge from "node-forge";
 import { SSL_STATUS } from "@/utils/interfaces/user.interface";
 import { CreateSslCertificateDto } from "./dto/create-ssl_certificate.dto";
 import moment from "moment";
@@ -6,11 +7,45 @@ import { Repository } from "typeorm";
 import { InjectRepository } from "@/factory/typeorm";
 import { UpdateSslCertificateDto } from "./dto/update-ssl_certificate.dto";
 
+type SSLCertificateAttributes= {
+  name?: string | undefined;
+  type?: string | undefined;
+  shortName?: string | undefined;
+  valueConstructed?: boolean | undefined;
+  // valueTagClass?: asnl.Class | undefined;
+  value?: any[] | string | undefined;
+  extensions?: any[] | undefined;
+}
  
 export class SslCertificatesService {
   private sslCertificatesRepository: Repository<SSLCertificatesEnitity>
   constructor() {
     this.sslCertificatesRepository = InjectRepository(SSLCertificatesEnitity)
+  }
+  generateSSLCert(validityInYears:number) {
+    // const keys = forge.pki.rsa.generateKeyPair(2048);
+    // const cert = forge.pki.createCertificate();
+    // cert.publicKey = keys.publicKey;
+    // cert.serialNumber = forge.random.getBytesSync(16);
+    // cert.validity.notBefore = moment().toDate();
+    // cert.validity.notAfter = new Date();
+    // cert.validity.notAfter.setFullYear(cert.validity.notBefore.getFullYear() + validityInYears);
+     
+    // const attrs = [
+    //   { name: "commonName", value: domainName },
+    //   { name: "countryName", value: "US" },
+    //   { shortName: "ST", value: "California" },
+    //   { name: "localityName", value: "San Francisco" },
+    //   { name: "organizationName", value: "My Company" },
+    //   { shortName: "OU", value: "IT Department" },
+    // ];
+    // cert.setSubject(attrs);
+    // cert.setIssuer(attrs);
+    // cert.sign(keys.privateKey, forge.md.sha256.create());
+    // const pemCert = forge.pki.certificateToPem(cert);
+    // const pemKey = forge.pki.privateKeyToPem(keys.privateKey);
+    // return { pemCert, pemKey };
+   
   }
   create(createSslCertificateDto: UpdateSslCertificateDto) {
     return this.sslCertificatesRepository.save({

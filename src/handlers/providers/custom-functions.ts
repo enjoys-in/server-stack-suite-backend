@@ -298,4 +298,50 @@ export class CustomFunctions {
         };
     }
   }
+  parseNginxConfig(nginxConfig: string) {
+    const servers: any[] = [];
+    const serverBlocks = nginxConfig.match(/server \{[^}]*\}/g);
+
+    if (serverBlocks) {
+      for (const block of serverBlocks) {
+        const server: any = {
+          domains: [],
+          ssl: null,
+          path: "/",
+          destination: "",
+          auto_ssl: false,
+          publicly_accessible: false,
+          force_https_redirect: false,
+          custom_headers: [],
+          server_type: "NGINX",
+        };
+
+        const serverNameMatch = block.match(/server_name\\s+([^;]+);/);
+         
+        if (serverNameMatch) {
+          server.domains = serverNameMatch[1].split(/\\s+/).map(domain => ({ domain }));
+        }
+
+        if (block.includes("ssl_certificate") && block.includes("ssl_certificate_key")) {
+          server.auto_ssl = true;
+          server.publicly_accessible = true;
+        }
+
+        const locationMatch = block.match(/location\s+\/api\/v1\s+\{[^}]*proxy_pass\s+(http[^;]+);/);
+
+        if (locationMatch) {
+          server.destination = locationMatch[1].trim();
+        }
+
+        if (block.includes("return 301 https://$host$request_uri;")) {
+          server.force_https_redirect = true;
+        }
+
+        servers.push(server);
+      }
+    }
+
+    return servers;
+  }
+
 }

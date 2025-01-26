@@ -50,6 +50,7 @@ router.route("/:server_name/ssl-certificates")
 router.get("/:server_name/ssl-certificates/:id", SslCertificatesController.default.findOne)
 
 // Host Routes
+router.get("/:server_name/sync-hosts",  HostController.default.syncProxyHosts)
 router.get("/:server_name/hosts", Validator.forFeature(HostValidator.getAll), HostController.default.getAllHosts)
 router.get("/:server_name/hosts/d/:domain_name", Validator.forFeature(HostValidator.getSingle), HostController.default.getSingleHost)
 router.put("/:server_name/hosts/proxy/:domain_name?", HostController.default.updateHost)

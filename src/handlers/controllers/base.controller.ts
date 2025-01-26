@@ -32,7 +32,7 @@ class BaseController implements OnAppStart, OnAppShutDown {
         UpdateLogsToFileOnStartup()
 
     }
-   
+
     async uploadFiles(req: Request, res: Response) {
         try {
 
@@ -97,7 +97,9 @@ class BaseController implements OnAppStart, OnAppShutDown {
     async readServerAnaylitcs(req: Request, res: Response) {
         try {
             const analytics = await AppService.getAnalytics()
-
+            if (req.query?.refresh=="true") {
+                await this.setUpServerStackSuite(true)
+            }
             res.json({
                 success: true,
                 message: "Server Info",
@@ -205,10 +207,10 @@ class BaseController implements OnAppStart, OnAppShutDown {
         }
     }
 
-    async setUpServerStackSuite() {
+    async setUpServerStackSuite(skip: boolean = true) {
         try {
             let infoStack: any
-            if (existsSync(SERVER_CONFIG)) {
+            if (skip && existsSync(SERVER_CONFIG)) {
                 Logging.dev("Setting up server Done")
             } else {
 

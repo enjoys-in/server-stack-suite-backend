@@ -8,6 +8,7 @@ export class InstallPlugins{
                 'dns-server',
                 'smtp-server',
                 'rmtp-server',
+                'ftp-server',
             ]
            
                 
