@@ -65,7 +65,7 @@ export const SERVER_DATA = {
             "serviceType": "Application",
             "servicePort": ["3000", "2222","2221","8080"],
             "serviceStatus": true,
-            "auth_required": true,
+            "auth_required": false,
         },
         "kafka": {
             "serviceId": 7,

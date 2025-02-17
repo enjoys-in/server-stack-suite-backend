@@ -8,15 +8,18 @@ import { OnEvent } from "@/utils/decorators";
 import deploymentService from "../application/deployment.service";
 import { ServicesData } from "@/utils/interfaces/deployment.interface";
 import { ServiceDataEntity } from "@/factory/entities/service-data.entity";
+import { ServicesEntity } from "@/factory/entities/services.entity";
 
 const DEFAULT_SERVICES = SERVER_DATA.DEFAULT_SERVICES
 const active_servicesRepository = InjectRepository(ActiveServicesEntity)
 const service_dataRepository = InjectRepository(ServiceDataEntity)
+const servicesRepository = InjectRepository(ServicesEntity)
 let abortControllerStore: Record<string, AbortController> = {}
 class ServiceController {
-    availableServices(req: Request, res: Response) {
+    async availableServices(req: Request, res: Response) {
         try {
-            res.json({ message: "OK", result: Object.values(DEFAULT_SERVICES), success: true }).end();
+            const result  = await servicesRepository.find()
+            res.json({ message: "OK", result, success: true }).end();
 
         } catch (error) {
             if (error instanceof Error) {
@@ -222,7 +225,7 @@ class ServiceController {
                         Cmd: [
                             'psql',
                             '-U',
-                            'postgres', // Replace with the admin user
+                            'postgres',
                             '-c',
                             sqlQuery
                         ],

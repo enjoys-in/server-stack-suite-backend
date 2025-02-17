@@ -27,5 +27,4 @@ export class CreateErrorPageDto {
   path!: string
   content!: string
   server_type?: SERVER_TYPE
-
 }

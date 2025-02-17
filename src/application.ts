@@ -15,7 +15,7 @@ import { SessionHandler } from '@/app/common/Session';
 import { Interceptor } from '@/app/common/Interceptors'
 import { RouteResolver } from '@/app/common/RouteResolver';
 import { AppMiddlewares } from '@/middlewares/app.middleware';
-import { CreateConnection } from '@factory/typeorm'
+import { CreateConnection,CloseConnection } from '@factory/typeorm'
 import { AppLifecycleManager } from '@app/modules/appLifecycle';
 import { AppEvents } from './utils/services/Events';
 import { Modifiers } from './app/common/Modifiers';
@@ -55,7 +55,7 @@ class AppServer {
         AppServer.App.use(helmet());
         AppServer.App.use(morgan("dev"));
         AppServer.App.use(cors({
-            origin: "http://localhost:3000",
+            origin:["http://localhost:3000"],
             optionsSuccessStatus: 200,
             methods: ["GET", "POST", "PUT", "DELETE"],
             allowedHeaders: "Origin,X-Requested-With,Content-Type,Accept,Authorization,x-app-version,x-app-name,x-api-key,Access-Control-Allow-Origin,Cache-Control,Access-Control-Allow-Credentials",
@@ -214,12 +214,13 @@ class AppServer {
         process.on('SIGINT', () => {
             AppLifecycleManager.destroyModules();
             AppEvents.emit('shutdown')
+            CloseConnection()
             Logging.dev("Manually Shutting Down", "notice")
             process.exit(1);
         })
         process.on('SIGTERM', () => {
             AppLifecycleManager.destroyModules();
-
+            CloseConnection()
             AppEvents.emit('shutdown')
             Logging.dev("Error Occured", "error")
             process.exit(1);

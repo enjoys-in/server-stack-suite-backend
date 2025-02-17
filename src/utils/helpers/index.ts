@@ -25,6 +25,16 @@ class Helpers {
         }
         return obj;
     }
+    extractPort(url: string): number | null {
+        const regex = /:(\d+)/;  
+        const match = url.match(regex);
+      
+        if (match) {
+          return parseInt(match[1], 10);  // Return the matched port number
+        }
+        
+        return null;  
+      }
     isValidSubdomain = (subdomain: string): boolean => validSubdomainRegex.test(subdomain);
     randomPort(runnigPorts: Record<any, any>, minPort: number, maxPort: number) {
         const port = Math.floor(Math.random() * (minPort - maxPort + 1)) + minPort;

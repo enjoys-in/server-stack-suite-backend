@@ -45,6 +45,7 @@ import { ActiveServicesEntity } from "@/factory/entities/active_services.enitity
 import { SERVER_DATA } from "@/utils/libs/data";
 import { AppEvents } from "@/utils/services/Events";
 import { EVENT_CONSTANTS } from "@/utils/helpers/events.constants";
+import defaultConfigService from "../services/default.config.service";
 const config: Config = {
     separator: "-",
     seed: 120498,
@@ -1004,7 +1005,7 @@ class DepploymentService {
         AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, "Deploying services");
         try {
             await containersService.pullAnyImage(activeServicesPayload.service_metadata.imageName, (msg: string) => AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, msg));
-            const containerConfig = this.createContainerConfig(activeServicesPayload.service_metadata.imageName, activeServicesPayload.credentials);
+            const containerConfig = defaultConfigService.createContainerConfig(activeServicesPayload.service_metadata.imageName, activeServicesPayload.credentials);
             const container = await containersService.createContainer(containerConfig);
             await containersService.startContainer(container.id);
             if (activeServicesPayload.service_metadata.imageName === "stalwartlabs/mail-server:latest") {
@@ -1016,9 +1017,7 @@ class DepploymentService {
                         username: credentials?.admin
                     }
                 }
-
             }
-
             activeServicesPayload.status = ContainerStatus.RUNNING;
             activeServicesPayload.container_metadata = await container.inspect();
             activeServicesPayload.container_id = container.id.substring(0, 12);
@@ -1031,15 +1030,10 @@ class DepploymentService {
         }
     }
     private extractAdminCredentials = (str: string): { admin: string; password: string } | null => {
-
         const adminRegex = /Your administrator account is '(.+?)'/;
         const passwordRegex = /password '(.+?)'/;
-
-
         const adminMatch = str.match(adminRegex);
         const passwordMatch = str.match(passwordRegex);
-
-
         if (adminMatch && passwordMatch) {
             return {
                 admin: adminMatch[1],
@@ -1049,185 +1043,8 @@ class DepploymentService {
 
         return null;
     };
-    private createContainerConfig(type: DockerServiceImages, credentials: any) {
-        let containerConfig: null | any = null;
-        switch (type) {
-            case "postgres:latest":
-                containerConfig = this.createPostgresContainerConfig(
-                    credentials.username,
-                    credentials.password
-                );
-                break;
-            case "mysql:latest":
-                containerConfig = this.createMySql(
-                    credentials.username,
-                    credentials.password
-                );
-                break;
-            case "mongo:latest":
-                containerConfig = this.createMongoConfig(
-                    credentials.username,
-                    credentials.password
-                );
-                break;
-            case "redis:latest":
-                containerConfig = this.createMailContainerConfig()
-                break;
-            case "stalwartlabs/mail-server:latest":
-                throw new Error(`This Service is not available`);
 
-            default:
-                throw new Error(`Unsupported application type:`);
-        }
-        return containerConfig;
-    }
-    private createMailContainerConfig() {
 
-        return {
-            Image: "stalwartlabs/mail-server:latest",
-            name: "mail-server",
-            ExposedPorts: {
-                "443/tcp": {},
-                "8080/tcp": {},
-                "25/tcp": {},
-                "587/tcp": {},
-                "465/tcp": {},
-                "143/tcp": {},
-                "993/tcp": {},
-                "4190/tcp": {},
-                "110/tcp": {},
-                "995/tcp": {},
-            },
-
-            HostConfig: {
-                PortBindings: {
-                    "5432/tcp": [{ HostPort: "5432" }],
-                    "443/tcp": [{ HostPort: "443" }],
-                    "8080/tcp": [{ HostPort: "8080" }],
-                    "25/tcp": [{ HostPort: "25" }],
-                    "587/tcp": [{ HostPort: "587" }],
-                    "465/tcp": [{ HostPort: "465" }],
-                    "143/tcp": [{ HostPort: "143" }],
-                    "993/tcp": [{ HostPort: "993" }],
-                    "4190/tcp": [{ HostPort: "4190" }],
-                    "110/tcp": [{ HostPort: "110" }],
-                    "995/tcp": [{ HostPort: "995" }],
-                },
-                Binds: [
-                    `/var/lib/stalwart-mail:/opt/stalwart-mail`,
-                ],
-                RestartPolicy: {
-                    Name: "always",
-                },
-            },
-        };
-    }
-    private createPostgresContainerConfig(username: string, password: string) {
-        return {
-            Image: "postgres:latest",
-            name: "postgres-db-server",
-            ExposedPorts: {
-                "5432/tcp": {},
-            },
-            Env: [
-                `POSTGRES_PASSWORD=${password}`,
-                `POSTGRES_USER=${username}`,
-                `POSTGRES_DB=defaultdb`,
-            ],
-            HostConfig: {
-                PortBindings: {
-                    "5432/tcp": [{ HostPort: "5432" }],
-                },
-                Binds: [
-                    `${path.join(
-                        HOME_DIR,
-                        ".data",
-                        "pgsql-data"
-                    )}:/var/lib/postgresql/data`,
-                ],
-                RestartPolicy: {
-                    Name: "always",
-                },
-            },
-        };
-    }
-    private createMySql(username: string, password: string) {
-        return {
-            Image: "mysql:latest",
-            name: "mysql-db-server",
-            ExposedPorts: {
-                "3306/tcp": {},
-            },
-            Env: [
-                `MYSQL_ROOT_PASSWORD=${password}`,
-                `MYSQL_USER=${username}`,
-                `MYSQL_PASSWORD=${password}`,
-                `MYSQL_DATABASE=defaultdb`,
-            ],
-            HostConfig: {
-                PortBindings: {
-                    "3306/tcp": [{ HostPort: "3306" }],
-                },
-                Binds: [
-                    `${path.join(HOME_DIR, ".data", "mysql-data")}:/var/lib/mysql/data`,
-                ],
-                RestartPolicy: {
-                    Name: "always",
-                },
-            },
-        };
-    }
-    private createRedisConfig(username: string, password: string) {
-        return {
-            Image: "redis:latest",
-            name: "redis-db-server",
-            RestartPolicy: "unless-stopped",
-            HostConfig: {
-                PortBindings: {
-                    "6379/tcp": [
-                        {
-                            HostPort: "6379",
-                        },
-                    ],
-                },
-                Binds: [`${path.join(HOME_DIR, ".data", "redis_data")}:/redis_data`],
-            },
-            Cmd: [
-                "redis-server",
-                "--user",
-                username,
-                "--requirepass",
-                password,
-                "--protected-mode",
-                "yes",
-            ],
-        };
-    }
-    private createMongoConfig(username: string, password: string) {
-        return {
-            Image: "mongo:latest",
-            name: "mongo-db-server",
-            ExposedPorts: {
-                "27017/tcp": {},
-            },
-            Env: [
-                `MONGO_INITDB_ROOT_PASSWORD=${password}`,
-                `MONGO_INITDB_ROOT_USERNAME=${username}`,
-                `MONGO_INITDB_DATABASE=defaultdb`,
-            ],
-            HostConfig: {
-                PortBindings: {
-                    "27017/tcp": [{ HostPort: "27017" }],
-                },
-                Binds: [
-                    `${path.join(HOME_DIR, ".data", "mongo-data")}:/var/lib/mongo/db`,
-                ],
-                RestartPolicy: {
-                    Name: "always",
-                },
-            },
-        };
-    }
 }
 
 export default new DepploymentService();

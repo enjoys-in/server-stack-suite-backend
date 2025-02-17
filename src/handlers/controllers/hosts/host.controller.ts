@@ -5,9 +5,9 @@ import { HostsService } from "./host.service";
 import { SERVER_TYPE, SERVER_TYPES } from "@/utils/interfaces";
 import { AppEvents } from "@/utils/services/Events";
 import { EVENT_CONSTANTS } from "@/utils/helpers/events.constants";
-import { COMMANDS, CRUD, PATHS, SERVER_TYPE_FILE_PATH } from "@/utils/paths";
+import { COMMANDS, PATHS, SERVER_TYPE_FILE_PATH } from "@/utils/paths";
 import { FileOperations } from "@/handlers/providers/io-operations";
-import { existsSync, readdir, readdirSync, readFile, readFileSync, statSync, unlinkSync, writeFile, writeFileSync } from "fs";
+import { existsSync, readdirSync, promises as fsPromises, statSync, unlinkSync, writeFile, writeFileSync } from "fs";
 import { CreateErrorPageDto, CreateHostDto } from "./dto/create-host.dto";
 import { NginxSample } from "@/utils/libs/samples/ngnix/demo";
 import { CreateSslCertificateDto } from "../ssl-certificates/dto/create-ssl_certificate.dto";
@@ -15,42 +15,89 @@ import { UserEntity } from "@/factory/entities/users.entity";
 import { join } from "path";
 import { CustomFunctions } from "@/handlers/providers/custom-functions";
 import { PublicRoute } from "@/utils/decorators";
+import helpers from "@/utils/helpers";
+
 
 const fileOperations = new FileOperations();
 const func = new CustomFunctions()
 const hostsService = new HostsService();
+interface FileStoreResult {
+    domains: Domain[];
+    ssl: null;
+    path: string;
+    destination: string;
+    auto_ssl: boolean;
+    publicly_accessible: boolean;
+    force_https_redirect: boolean;
+    custom_headers: string[];
+    server_type: string;
+}
 
+interface Domain {
+    source: string;
+}
 class HostController {
+
+    constructor() {
+        this.getconfig()
+    }
+    private async getconfig() {
+        const ConfigParser = require('@webantic/nginx-config-parser')
+        const parser = new ConfigParser()
+        const data = await fsPromises.readFile(PATHS.NGINX.SITES_ENABLED_LOCATION_FILE.replace(":file_name", "default"), "utf8");
+
+
+
+        return {
+            parser, data
+        }
+
+    }
     @PublicRoute()
     async syncProxyHosts(req: Request, res: Response) {
         try {
-            let fileStore: any = []
-            const dirPath = SERVER_TYPE_FILE_PATH.NGINX.SITES_AVAILABLE_LOCATION_FILE.replace("/:file_name", "")
-            const files = readdirSync(dirPath)
-            for (const file of files) {
-                const filePath = join(dirPath, file);
- 
-                const fileStat = statSync(filePath);
-                
-                if (fileStat.isFile()) {
-                    readFile(filePath,async (err, data) => {
-                      
-                        const parsedData = func.parseNginxConfig(data.toString("utf8"));
-                         
-                        fileStore.push([...parsedData])
-                    })
+            let fileStore: Record<string, FileStoreResult[]> = {};
+            const dirPath = SERVER_TYPE_FILE_PATH.NGINX.SITES_ENABLED_LOCATION_FILE.replace("/:file_name", "");
+            const files = readdirSync(dirPath);
 
+
+            const filePromises = files.map(async (file) => {
+                const filePath = join(dirPath, file);
+                const fileStat = statSync(filePath);
+
+                if (fileStat.isFile()) {
+                    try {
+                        const ConfigParser = require('@webantic/nginx-config-parser')
+                        const parser = new ConfigParser()
+                        const data = await fsPromises.readFile(filePath, "utf8");
+                        const configJson = parser.toJSON(data)
+
+                        fileStore[file] = configJson
+                        return configJson;
+                    } catch (err) {
+                        console.error(`Error reading file ${file}:`, err);
+                        return null;
+                    }
                 }
-            }
-            res.json({ message: "OK", result: fileStore, success: true })
+                return null;
+            });
+
+            await Promise.all(filePromises);
+
+            // // const isExist = await hostsService.repository
+            // // .createQueryBuilder("hosts")
+            // // .where("hosts.domains::jsonb @> :jsonQuery", {
+            // //     jsonQuery: JSON.stringify([{ source: file }]),
+            // // })
+            // // .getCount();
+
+
+
+            res.json({ message: "OK", result: fileStore, success: true });
 
         } catch (error: any) {
-            console.log(error)
-            if (error instanceof Error) {
-                res.json({ message: error.message, result: null, success: false })
-                return;
-            }
-            res.json({ message: "Something went wrong", result: null, success: false })
+            console.error(error);
+            res.json({ message: error instanceof Error ? error.message : "Something went wrong", result: null, success: false });
         }
     }
     async checkReverseProxyConfig(req: Request, res: Response) {
@@ -147,7 +194,7 @@ class HostController {
             //create domain string[]
             const server_names = createHostDto.domains.map((domain) => domain.source)
             const filePath = SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].SITES_ENABLED_LOCATION_FILE.replace(":file_name", createHostDto.domain_name)
-            let fileContent = NginxSample.DeployApi(server_names, createHostDto.destination, createHostDto.path)
+            let fileContent = NginxSample.DeployApi(server_names, createHostDto.destination, createHostDto.path, helpers.extractPort(createHostDto.destination) as number)
             // write to file in path
             AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, `Writing Config File  ${createHostDto.domain_name}`);
             if (createHostDto.ip_whitelist) {
@@ -200,7 +247,7 @@ class HostController {
                 ...createHostDto,
                 user: userInstance
             })
-            res.json({ message: "OK", result: hostInstance, success: true });
+            res.json({ message: "Host Created Restart/Reload Config", result: hostInstance, success: true });
 
 
         } catch (error) {
@@ -275,7 +322,7 @@ class HostController {
             //create domain string[]
             const server_names = createHostDto.domains.map((domain) => domain.source)
             const filePath = SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].SITES_ENABLED_LOCATION_FILE.replace(":file_name", createHostDto.domain_name)
-            let fileContent = NginxSample.DeployApi(server_names, createHostDto.destination, createHostDto.path)
+            let fileContent = NginxSample.DeployApi(server_names, createHostDto.destination, createHostDto.path, helpers.extractPort(createHostDto.destination) as number)
             // write to file in path
             AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, `Writing Config File  ${createHostDto.domain_name}`);
             if (createHostDto.ip_whitelist) {
@@ -343,12 +390,30 @@ class HostController {
                 throw new Error("Only Nginx is supported for now")
             }
             const createErrorPageDto = req.body as CreateErrorPageDto
+            const result = await hostsService.findErrorPage({ name: createErrorPageDto.name })
+            if (result.length > 0) {
+                throw new Error("Page With this name already exists , please update it or remove it first")
+            }
             await hostsService.createErrorPage(createErrorPageDto)
-            const filePath = CreateErrorPageDto.name === "default" ? PATHS.NGINX.INDEX_HTML
+            const file_name = "custom_{file_name}.html".replace("{file_name}", createErrorPageDto.name)
+            const filePath = createErrorPageDto.name === "default" ? PATHS.NGINX.INDEX_HTML
                 :
                 PATHS.NGINX.ERROR_PAGES.replace("{file_name}", createErrorPageDto.name)
             writeFileSync(filePath, createErrorPageDto.content) // write to file in path
 
+            const { data, parser } = await this.getconfig()
+            var configJson = parser.toJSON(data)
+
+            const errorObject = {
+                error_page: `${createErrorPageDto.name} /${file_name}`,
+                [`location = /${file_name}`]: { root: '/usr/share/nginx/html', internal: '' }
+            }
+
+            const modifiedObject = Object.assign(configJson.server, errorObject)
+
+
+
+            console.log(parser.parse(modifiedObject))
             AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, createErrorPageDto.name + ".html Error Page has been Created")
 
             res.json({ message: "Error Page has been Created", result: {}, success: true });
@@ -418,15 +483,13 @@ class HostController {
 
             const { id, ...rest } = req.body as CreateErrorPageDto & { id: number }
             AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, "Updating Error Page")
-            await hostsService.updateErrorPage(+id, { content: rest.content, status: rest.status })
 
-            const filePath = CreateErrorPageDto.name === "default" ?
+            const filePath = rest.name === "default" ?
                 SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].INDEX_HTML
                 :
                 SERVER_TYPE_FILE_PATH[server_nameUpdated as keyof typeof SERVER_TYPE_FILE_PATH].ERROR_PAGES.replace("{file_name}", rest.name)
 
 
-            AppEvents.emit(EVENT_CONSTANTS.RUN_COMMAND, server_name.toUpperCase());
 
             writeFile(filePath, req.body.content, (err) => {
                 if (err) {
@@ -434,11 +497,16 @@ class HostController {
                     throw new Error("Unable to write data to  File")
 
                 } else {
-                    AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, rest.name + ".html Error Page has been Created")
+                    AppEvents.emit(EVENT_CONSTANTS.LOGS.INFO, rest.name + ".html  Page has been Created")
                 }
             });
+            await hostsService.updateErrorPage(+id, { content: rest.content, status: rest.status })
+            AppEvents.emit(EVENT_CONSTANTS.SERVER_COMMAND, {
+                server:server_name.toUpperCase(),
+                type: "RELOAD"
+            });
 
-            res.json({ message: rest.name + ".html Error Page has been Created", result: null, success: true });
+            res.json({ message: rest.name + ".html Error Page has been Updated", result: null, success: true });
 
         } catch (error) {
             if (error instanceof Error) {

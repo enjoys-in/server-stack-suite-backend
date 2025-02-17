@@ -1,64 +1,34 @@
 import { ErrorPagesEnitity } from "@/factory/entities/error_pages.entity"
 import { HostsEnitity } from "@/factory/entities/hosts.entity"
 import { InjectRepository } from "@/factory/typeorm"
-import { DEFAULT_STATUS, HOST_TYPE } from "@/utils/interfaces/user.interface"
-import { Repository } from "typeorm"
+import { HOST_TYPE } from "@/utils/interfaces/user.interface"
+ 
 import { CreateErrorPageDto } from "./dto/create-host.dto"
 import { UpdateErrorPageDto, UpdateHostDto } from "./dto/update-host.dto"
 import { SERVER_TYPE, SERVER_TYPES } from "@/utils/interfaces"
-import { onEnableHook } from "@/utils/decorators"
-
-
+ 
 export type FixedServerTypeName = Uppercase<SERVER_TYPES>
 
 
 const errorPagesRepository = InjectRepository(ErrorPagesEnitity)
 const hostsRepository = InjectRepository(HostsEnitity)
 
-@onEnableHook()
+ 
 export class HostsService {
+  repository = hostsRepository
 
-  static async onAppStart() {
-    const defaultPage = errorPagesRepository.findOne({ where: { name: "default" } })
-    if (!defaultPage) {
-      errorPagesRepository.save({
-        name: "default", status: DEFAULT_STATUS.PUBLISH, path: "/", content: ` <!DOCTYPE html>
-            <html>
-              <head>
-                <title>Welcome to nginx!</title>
-                <style>
-                  body {
-                    width: 35em;
-                    margin: 0 auto;
-                    font-family: Tahoma, Verdana, Arial, sans-serif;
-                  }
-                </style>
-              </head>
-              <body>
-                <h1>Welcome to nginx!</h1>
-                <p>
-                  If you see this page, the nginx web server is successfully installed and
-                  working. Further configuration is required.
-                </p>
-
-                <p>
-                  For online documentation and support please refer to
-                  <a href="http://nginx.org/">nginx.org</a>.<br />
-                  Commercial support is available at
-                  <a href="http://nginx.com/">nginx.com</a>.
-                </p>
-
-                <p><em>Thank you for using nginx.</em></p>
-              </body>
-            </html> ` })
-    }
-  }
+ 
 
   create(createHostDto: UpdateHostDto) {
     return hostsRepository.save(createHostDto)
   }
   createErrorPage(createHostDto: CreateErrorPageDto) {
     return errorPagesRepository.save(createHostDto)
+  }
+  findErrorPage(data:any){
+    return errorPagesRepository.find({
+      where:data
+    })
   }
   getAllErrorPages() {
     return errorPagesRepository.find()
@@ -131,5 +101,4 @@ export class HostsService {
   remove(id: number) {
     return hostsRepository.delete({ id })
   }
-
 }

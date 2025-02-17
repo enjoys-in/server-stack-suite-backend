@@ -74,7 +74,28 @@ export class EventsListeners {
     this.handleLogs(message)
     this.sendWithCMD(message)
   }
-  
+
+  @OnEvent(EVENT_CONSTANTS.SERVER_COMMAND, { async: true })
+  handleRunServerCommand(payload:{server: keyof typeof SERVER_COMMANDS, type:string }) {    
+    this.handleLogs(`Running  ${payload.server} Command ${payload.type}...`)
+    switch(payload.type){
+      case "STOP_SERVER":
+        this.STOP_SERVER(payload.server)
+        break;
+      case "START_SERVER":
+        this.START_SERVER(payload.server)
+        break;
+      case "RESTART_SERVER":
+        this.RESTART_SERVER(payload.server)
+        break;
+        case "RELOAD":
+          this.RELOAD_SERVER_CONFIG_FILES(payload.server)
+          break;
+      default:
+        logsProvider.sendPayload({ message: "Invalid Command", level: "error" });
+        break;
+    }     
+  }
 
 private sendWithCMD(cmd: string) {
     exec(cmd, (error, stdout, stderr) => {

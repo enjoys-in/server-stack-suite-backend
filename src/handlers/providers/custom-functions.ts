@@ -300,7 +300,7 @@ export class CustomFunctions {
   }
   parseNginxConfig(nginxConfig: string) {
     const servers: any[] = [];
-    const serverBlocks = nginxConfig.match(/server \{[^}]*\}/g);
+    const serverBlocks = nginxConfig.match(/server\s*\{[^}]*\}/gs);
 
     if (serverBlocks) {
       for (const block of serverBlocks) {
@@ -315,24 +315,46 @@ export class CustomFunctions {
           custom_headers: [],
           server_type: "NGINX",
         };
-
-        const serverNameMatch = block.match(/server_name\\s+([^;]+);/);
-         
+        const blockLines = block.split('\n').filter(line => !line.trim().startsWith('#')).join('\n');
+        // Extract server_name
+        const serverNameMatch = blockLines.match(/server_name\s+([^;]+);/);
         if (serverNameMatch) {
-          server.domains = serverNameMatch[1].split(/\\s+/).map(domain => ({ domain }));
+          server.domains = serverNameMatch[1].trim().split(/\s+/).map(domain => ({ source:domain }));
         }
-
+        if (server.domains.some((domain:any) => domain.source.includes('_')) || server.domains.length === 0) {
+          continue; // Skip this server if the condition is met
+      }
+        // Check for SSL (auto_ssl and publicly_accessible)
         if (block.includes("ssl_certificate") && block.includes("ssl_certificate_key")) {
           server.auto_ssl = true;
           server.publicly_accessible = true;
         }
 
-        const locationMatch = block.match(/location\s+\/api\/v1\s+\{[^}]*proxy_pass\s+(http[^;]+);/);
+        // Extract all location blocks
+        const locationBlocks = block.match(/location\s+([^\s{]+)\s*\{[^}]*\}/gs);
+        if (locationBlocks) {
+          for (const locationBlock of locationBlocks) {
+            // Extract path from location block
+            const pathMatch = locationBlock.match(/location\s+([^\s{]+)/);
+            if (pathMatch) {
+              server.path = pathMatch[1].trim();
+            }
 
-        if (locationMatch) {
-          server.destination = locationMatch[1].trim();
+            // Extract proxy_pass
+            const proxyPassMatch = locationBlock.match(/proxy_pass\s+(http[^;]+);/);
+            if (proxyPassMatch) {
+              server.destination = proxyPassMatch[1].trim();
+            }
+
+            // Extract custom headers
+            const headerMatches = locationBlock.match(/proxy_set_header\s+([^;]+);/g);
+            if (headerMatches) {
+              server.custom_headers = headerMatches.map(header => header.replace("proxy_set_header", "").trim());
+            }
+          }
         }
 
+        // Check for force HTTPS redirect
         if (block.includes("return 301 https://$host$request_uri;")) {
           server.force_https_redirect = true;
         }
@@ -343,5 +365,9 @@ export class CustomFunctions {
 
     return servers;
   }
+
+
+
+
 
 }

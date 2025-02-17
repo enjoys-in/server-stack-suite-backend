@@ -1,4 +1,4 @@
-import { Entity, Column, OneToOne, ManyToOne, OneToMany, JoinColumn, Relation, } from "typeorm"
+import { Entity, Column, OneToOne, ManyToOne,  JoinColumn, Relation, } from "typeorm"
 import { CommonEntity } from "./common"
 import { SSLCertificatesEnitity } from "./ssl_certificates.entity"
 import { UserEntity } from "./users.entity"
@@ -9,7 +9,7 @@ import { SERVER_TYPE,Domain } from "@/utils/interfaces"
 @Entity("hosts")
 export class HostsEnitity extends CommonEntity {
 
-    @Column("simple-json", {})
+    @Column("jsonb",{default:[]})
     domains!: Domain[]
 
     @Column({ default: null, nullable: true })
@@ -17,6 +17,9 @@ export class HostsEnitity extends CommonEntity {
 
     @Column({ default: "/" })
     path!: string
+
+    @Column({ default:"0" })
+    port!: string
 
     @Column()
     destination!: string
@@ -27,7 +30,7 @@ export class HostsEnitity extends CommonEntity {
     @Column({ default: false })
     publicly_accessible!: boolean
 
-    @Column({ default: HOST_STATUS.OFFLINE, enum: HOST_STATUS })
+    @Column({ default: HOST_STATUS.ONLINE, enum: HOST_STATUS })
     status!: string
 
     @Column({ default: HOST_TYPE.PROXY, enum: HOST_TYPE })
