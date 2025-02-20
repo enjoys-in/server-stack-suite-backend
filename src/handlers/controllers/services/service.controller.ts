@@ -18,7 +18,25 @@ let abortControllerStore: Record<string, AbortController> = {}
 class ServiceController {
     async availableServices(req: Request, res: Response) {
         try {
-            const result  = await servicesRepository.find()
+            const result = await servicesRepository.find({
+                relations: ["is_active_service"],
+                select: {
+                    id: true,
+                    service_id: true,
+                    service_name: true,
+                    service_slug: true,
+                    service_type: true,
+                    image_name: true,
+                    service_description: true,                    
+                    auth_required: true,
+                    service_status: true,
+                    is_active_service: {
+                        id: true,
+                        service_slug: true,
+                        container_id: true, 
+                    }
+                }
+            })
             res.json({ message: "OK", result, success: true }).end();
 
         } catch (error) {
@@ -115,7 +133,7 @@ class ServiceController {
                     users: [credential],
                 })
             }
-
+            await servicesRepository.save({ is_active_service: { id: data.id }, })
             AppEvents.emit("deploy::service", JSON.stringify(data))
             res.json({ message: "OK", result: null, success: true }).end();
 
@@ -365,18 +383,18 @@ class ServiceController {
         try {
             const service_id = req.params.service_id
 
-            const service =  await active_servicesRepository.findOne({
+            const service = await active_servicesRepository.findOne({
                 where: {
                     id: +service_id
                 },
-                select:["service_metadata","credentials"]
+                select: ["service_metadata", "credentials"]
             })
             if (!service) {
                 throw new Error("Service not found")
             }
-            const dialect = service.service_metadata.serviceSlug  
+            const dialect = service.service_metadata.serviceSlug
             const serviceURI = `${dialect}://${service.credentials.username}:${service.credentials.password}@localhost:${service.service_metadata.servicePort[0]}`
-            
+
             res.json({ message: "OK", result: "Operation aborted", success: true }).end();
         } catch (error) {
             if (error instanceof Error) {

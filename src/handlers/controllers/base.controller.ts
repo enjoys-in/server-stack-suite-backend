@@ -1,13 +1,14 @@
 import { formatDate, HandleLogs } from "@/utils/helpers/file-logs";
 import type { Request, Response } from "express";
-import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFile, writeFileSync } from "fs";
+import { readdir, stat } from "fs/promises";
+import { existsSync, mkdirSync, readdirSync, readFile, readFileSync, unlinkSync, writeFile, writeFileSync } from "fs";
 import { extname, join } from "path";
 import AppService from '@handlers/providers/app.provider'
 const SERVER_CONFIG = join(process.cwd(), "./sever.config.json")
 const LOG_DIR = join(process.cwd(), "logs")
 import Client from 'ssh2-sftp-client'
 import { Logging } from "@/logs";
-import { SERVER_TYPE_FILE_PATH } from "@/utils/paths";
+import { PATHS, SERVER_TYPE_FILE_PATH, SYSTEMCTL } from "@/utils/paths";
 import { OnAppShutDown, OnAppStart } from "@/utils/interfaces/application.interface";
 import { onEnableHook } from "@/utils/decorators";
 import { FileOperations } from "../providers/io-operations";
@@ -16,7 +17,9 @@ import { CustomFunctions } from "../providers/custom-functions";
 import helpers from "@/utils/helpers";
 const fileOps = new FileOperations()
 const func = new CustomFunctions()
-
+import { exec } from "child_process";
+import { promisify } from "util";
+const execAsync = promisify(exec);
 @onEnableHook()
 class BaseController implements OnAppStart, OnAppShutDown {
 
@@ -97,7 +100,7 @@ class BaseController implements OnAppStart, OnAppShutDown {
     async readServerAnaylitcs(req: Request, res: Response) {
         try {
             const analytics = await AppService.getAnalytics()
-            if (req.query?.refresh=="true") {
+            if (req.query?.refresh == "true") {
                 await this.setUpServerStackSuite(true)
             }
             res.json({
@@ -430,7 +433,7 @@ class BaseController implements OnAppStart, OnAppShutDown {
                     console.error(err);
                     return
                 }
-                console.log("first")
+
             });
 
             res.json({
@@ -455,6 +458,7 @@ class BaseController implements OnAppStart, OnAppShutDown {
             })
         }
     }
+
     async sftpUpload(req: Request, res: Response) {
         const sftp = new Client();
         try {
@@ -486,6 +490,131 @@ class BaseController implements OnAppStart, OnAppShutDown {
             })
         } finally {
             sftp.end();
+        }
+    }
+    async systemdServices(req: Request, res: Response) {
+        try {
+            const { type } = req.query as { type: "system" | "all" };
+            if (type === "system") {
+                const files = await AppService.listSystemdServices()
+                res.json({
+                    success: true,
+                    message: type,
+                    result: files
+                })
+                return
+
+            } else {
+                const files = await AppService.getServiceFiles();
+               
+                const results = await Promise.all(files.map(async (file) => {
+                    try {
+                        const cmd = SYSTEMCTL.STATUS.replace("{service_name}", file.split("/etc/systemd/system/")[1])
+                        
+                        const res = await execAsync(cmd);
+                        return AppService.parseSystemdServiceOutput(res.stdout);
+                    } catch (error) {
+                        console.error(`Error reading file: ${file}`, error);
+                        return null;
+                    }
+                }));
+
+
+
+                res.json({
+                    success: true,
+                    message: type,
+                    result: results
+                })
+            }
+
+        } catch (error) {
+            if (error instanceof Error) {
+                res.json({
+                    success: true,
+                    message: error.message,
+                    result: error
+                })
+                return
+            }
+
+            res.json({
+                success: false,
+                message: "Something went wrong",
+                result: null
+            })
+        }
+    }
+    async getSystemServiceFileContent(req: Request, res: Response) {
+        try {
+            const body = req.body as { service: string }
+            const dirPath = `${SYSTEMCTL.ROOT_PATH}${body.service}`
+            const fileData = readFileSync(String(dirPath), { encoding: 'utf-8' });
+
+            res.json({
+                success: true,
+                message: "Loaded systemd services",
+                result: fileData
+            })
+        } catch (error) {
+            if (error instanceof Error) {
+                res.json({
+                    success: true,
+                    message: error.message,
+                    result: error
+                })
+                return
+            }
+
+            res.json({
+                success: false,
+                message: "Something went wrong",
+                result: null
+            })
+        }
+    }
+    async updateSystemServiceFileContent(req: Request, res: Response) {
+        try {
+            const body = req.body as {
+                service: string;
+                content: string
+            }
+            // const fileData = readFileSync(String(dirPath), { encoding: 'utf-8' });
+
+        } catch (error) {
+            if (error instanceof Error) {
+                res.json({
+                    success: true,
+                    message: error.message,
+                    result: error
+                })
+                return
+            }
+            res.json({
+                success: false,
+                message: "Something went wrong",
+                result: null
+            })
+        }
+    }
+    async getSystemServiceLogs(req: Request, res: Response) {
+        try {
+            const body = req.body as { service: string; };
+            // const logs = await AppService.getServiceLogs(body.service)
+            res.json({
+                success: true,
+                message: "Loaded systemd services",
+                // result: logs
+            })
+        } catch (error) {
+            if (error instanceof Error) {
+                res.json({
+                    success: true,
+                    message: error.message,
+                    result: error
+                })
+                return
+            }
         }
     }
 }

@@ -6,7 +6,12 @@ import { MigrationInterface, QueryRunner } from "typeorm";
 export class Services1737874374068 implements MigrationInterface {
 
     public async up(queryRunner: QueryRunner): Promise<void> {
+        const result = await queryRunner.query(`SELECT * FROM services`)
+        if (result.length > 0) {
+            return            
+        }
        const services = helpers.transformKeys(Object.values(SERVER_DATA.DEFAULT_SERVICES),ServiceMappings)
+      
         await queryRunner.manager.createQueryBuilder()
             .insert()
             .into('services')

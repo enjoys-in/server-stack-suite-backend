@@ -30,6 +30,12 @@ router.get("/files", BaseController.default.getFiles)
 router.get("/file-content", BaseController.default.getFileContent)
 router.get("/server-file-content", BaseController.default.getServerFileContent)
 router.put("/server-file-content", BaseController.default.updateServerFileContent)
+router.get("/systemd-services", BaseController.default.systemdServices)
+router.post("/systemd-services-logs", BaseController.default.getSystemServiceLogs)
+router.post("/systemd-services-content", BaseController.default.getSystemServiceFileContent)
+router.put("/systemd-services", BaseController.default.updateSystemServiceFileContent)
+
+
 router.post("/ask-to-ai", AiController.default.genarativeAI)
 router.get("/get-suggestions", AiController.default.getSuggestionsFromHistory)
 router.post("/get-dir", AiController.default.getDirectories)

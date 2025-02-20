@@ -1,19 +1,19 @@
 import { homedir } from "os"
 import { join } from "path"
 export const DEPLOYMENT_DIR = process.env.HOME + "/deployments"
-export const HOME_DIR =  homedir()
-export const BUILD_PACKS={
-    NIXPACKS:{
-        build:"nixpack build . --name {name}",
-        plan:"nixpack plan . --format toml",
-        export_nixpacksToml_file:"nixpacks plan . -f toml > nixpacks.toml",
-        export_docker_file:"nixpacks build . -o .",
+export const HOME_DIR = homedir()
+export const BUILD_PACKS = {
+    NIXPACKS: {
+        build: "nixpack build . --name {name}",
+        plan: "nixpack plan . --format toml",
+        export_nixpacksToml_file: "nixpacks plan . -f toml > nixpacks.toml",
+        export_docker_file: "nixpacks build . -o .",
     },
-    DOCKER:{
-        build:"docker build -t {name}",
-        run:"docker run -d -p {port}:80 {name}",
-        stop:"docker stop {container_id}",
-        remove:"docker rm {container_id}"
+    DOCKER: {
+        build: "docker build -t {name}",
+        run: "docker run -d -p {port}:80 {name}",
+        stop: "docker stop {container_id}",
+        remove: "docker rm {container_id}"
     }
 }
 export const CRUD = {
@@ -36,7 +36,22 @@ export const CRUD = {
     MOVE: {
         FILE: "sudo mv {source_path} {destination_path}",
         DIR: "sudo mv -r {source_path} {destination_path}"
-    }
+    },
+
+}
+export const SYSTEMCTL = {
+    ROOT_PATH: "/etc/systemd/system/",
+    START: "sudo systemctl start {service_name}",
+    STOP: "sudo systemctl stop {service_name}",
+    RESTART: "sudo systemctl restart {service_name}",
+    STATUS: "sudo systemctl status {service_name}",
+    ENABLE: "sudo systemctl enable {service_name}",
+    DISABLE: "sudo systemctl disable {service_name}",
+    RELOAD: "sudo systemctl daemon-reload",
+    RELOAD_SERVICE: "sudo systemctl reload {service_name}",
+    LIST: "systemctl list-units --type=service --all --no-pager --no-legend",  
+    LIST_SERVICES: `systemctl list-units --type=service --all --no-pager --no-legend | awk '{print $1}' | grep -v '●' | xargs -r systemctl show -p FragmentPath | grep '/etc/systemd/system/'`
+    // systemctl list-units  --type service --full  --all --output json --no-pager > services.json
 }
 export const SERVER_TYPE_FILE_PATH = {
     NGINX: {
@@ -86,8 +101,10 @@ export const PATHS = {
         LETS_ENCRYPT: {
             pk_key: "/etc/letsencrypt/live/:domain/fullchain.pem",
             cert_key: "/etc/letsencrypt/live/:domain/privkey.pem"
-
         }
+    },
+    SERVICES: {
+        SYSTEMD: `/etc/systemd/system`
     },
     ...SERVER_TYPE_FILE_PATH
 }
@@ -100,7 +117,6 @@ export const SERVER_COMMANDS = {
         RESTART_SERVER: "sudo systemctl restart nginx",
         START_SERVER: "sudo systemctl start nginx",
         STATUS: "sudo systemctl status nginx",
-
     },
     HTTPD: {
         TEST_CONF_FILE: "sudo httpd -t",

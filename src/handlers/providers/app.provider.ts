@@ -9,9 +9,33 @@ import * as fs from 'fs'
 import { InitLogs } from "@/utils/helpers/file-logs"
 import { join } from "path"
 import { ContainerEntity } from "@/factory/entities/container.entity"
+import { SYSTEMCTL } from "@/utils/paths"
+import { readdir, stat } from "fs/promises"
 
 let idCounter = 1;
+type ServiceInfo = {
+    unit: string;
+    description: string;
+    sub: string;
+    active: string;
+    pid?: number;
+    tasks?: number;
+    memory?: string;
+};
+interface SystemdServiceFile {
+    id: number;
+    name: string;
+    path: string;
+    isDirectory: boolean;
+    children?: Child[] | [];
+}
 
+interface Child {
+    id: number;
+    name: string;
+    path: string;
+    isDirectory: boolean;
+}
 class AppService {
     private readonly userRepo: Repository<UserEntity>
     private readonly sslRepo: Repository<SSLCertificatesEnitity>
@@ -25,12 +49,12 @@ class AppService {
 
     }
     async getAnalytics() {
-        
+
         return {
             totalUsers: await this.userRepo.count(),
             totalHosts: await this.hostRepo.count(),
             totalSslCertificates: await this.sslRepo.count(),
-            containers:await this.containerRepo.count(),
+            containers: await this.containerRepo.count(),
         }
     }
     async create(createUserDto: any): Promise<UserEntity> {
@@ -44,7 +68,36 @@ class AppService {
             password: await utils.HashPassword(password),
         })
     }
+    async listSystemdServices(): Promise<any> {
+        return new Promise((resolve, reject) => {
+            exec(SYSTEMCTL.LIST, (error, stdout) => {
+                if (error) {
+                    reject(error);
+                    return;
+                }
 
+                const services = stdout
+                    .split("\n")
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0)
+                    .map(line => {
+                        line = line.startsWith("●") ? line.slice(1).trim() : line;
+
+                        const parts = line.split(/\s+/); // Splitting by whitespace
+
+                        const unit = parts[0]; // UNIT (service name)
+                        const load = parts[1]; // LOAD (loaded/not-found)
+                        const active = parts[2]; // ACTIVE (active/inactive)
+                        const sub = parts[3]; // SUB (running/exited/dead)
+                        const description = parts.slice(4).join(" "); // Remaining part is DESCRIPTION
+
+                        return { unit, load, active, sub, description };
+                    });
+
+                resolve(services);
+            });
+        });
+    };
     execute(command: string): Promise<string> {
         return new Promise((resolve, reject) => {
             exec(command, (error, stdout) => {
@@ -108,41 +161,71 @@ class AppService {
     test() {
         return this.userRepo.find()
     }
-    listFilesRecursively = (dirPath: string): any[] => {
-      try {
-        const files: fs.Dirent[] = fs.readdirSync(dirPath, { withFileTypes: true });
+    parseSystemdServiceOutput(output: string): ServiceInfo | null {
 
-        const directories = files
-            .filter(file => file.isDirectory() && file.name !== 'node_modules') // Exclude node_modules
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map(file => {
-                const fullPath = join(dirPath, file.name);
-                return {
-                    id: idCounter++, // Use and increment the counter
-                    name: file.name,
-                    path: fullPath,
-                    isDirectory: true,
-                    children: this.listFilesRecursively(fullPath) // Recursive call for directories
-                };
-            });
+        const lines = output.split("\n").map(line => line.trim()).filter(line => line);
 
-        const regularFiles = files
-            .filter(file => !file.isDirectory())
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map(file => {
-                const fullPath = join(dirPath, file.name);
-                return {
-                    id: idCounter++, // Use and increment the counter
-                    name: file.name,
-                    path: fullPath,
-                    isDirectory: false
-                };
-            });
+        if (lines.length === 0) return null;
 
-        return [...directories, ...regularFiles];
-      } catch (error) {
-        throw error
-      }
+        const unitMatch = lines[0].match(/● (\S+) - (.+)/);
+        const loadedMatch = output.match(/Loaded:\s+([^()]+)\s+\(([^)]+)\)/);
+        const activeMatch = output.match(/Active:\s+(\S+ \(\S+\))/);
+        const pidMatch = output.match(/Main PID:\s+(\d+)/);
+        const tasksMatch = output.match(/Tasks:\s+(\d+)/);
+        const memoryMatch = output.match(/Memory:\s+([\d.]+\S+)/);
+
+        return {
+            unit: unitMatch ? unitMatch[1] : "",
+            description: unitMatch ? unitMatch[2] : "",
+            sub: loadedMatch ? loadedMatch[1].trim() : "",
+            active: activeMatch ? activeMatch[1].trim() : "",
+            pid: pidMatch ? parseInt(pidMatch[1], 10) : undefined,
+            tasks: tasksMatch ? parseInt(tasksMatch[1], 10) : undefined,
+            memory: memoryMatch ? memoryMatch[1] : undefined,
+        };
+    }
+    listFilesRecursively = (dirPath: string): SystemdServiceFile[] => {
+        try {
+            const files: fs.Dirent[] = fs.readdirSync(dirPath, { withFileTypes: true });
+
+            const directories = files
+                .filter(file => file.isDirectory() && file.name !== 'node_modules') // Exclude node_modules
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(file => {
+                    const fullPath = join(dirPath, file.name);
+                    return {
+                        id: idCounter++, // Use and increment the counter
+                        name: file.name,
+                        path: fullPath,
+                        isDirectory: true,
+                        children: this.listFilesRecursively(fullPath) // Recursive call for directories
+                    };
+                });
+
+            const regularFiles = files
+                .filter(file => !file.isDirectory())
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(file => {
+                    const fullPath = join(dirPath, file.name);
+                    return {
+                        id: idCounter++, // Use and increment the counter
+                        name: file.name,
+                        path: fullPath,
+                        isDirectory: false
+                    };
+                });
+
+            return [...directories, ...regularFiles];
+        } catch (error) {
+            throw error
+        }
+    }
+    async getServiceFiles() {
+        const stdout = await this.execute(SYSTEMCTL.LIST_SERVICES)
+        return stdout
+            .split("\n")
+            .map((line) => line.replace("FragmentPath=", "").trim())
+            .filter((path) => path.length > 0);
     }
 }
 

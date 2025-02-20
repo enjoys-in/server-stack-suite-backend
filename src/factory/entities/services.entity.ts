@@ -1,6 +1,7 @@
-import { BeforeInsert, Column, Entity,} from "typeorm";
+import { BeforeInsert, Column, Entity, JoinColumn,  OneToOne,} from "typeorm";
 import { CommonEntity } from "./common";
 import helpers from "@/utils/helpers";
+import { ActiveServicesEntity } from "./active_services.enitity";
 
 @Entity("services")
 export class ServicesEntity extends CommonEntity {
@@ -31,6 +32,10 @@ export class ServicesEntity extends CommonEntity {
 
     @Column({ default: false })
     service_status!: boolean;
+
+    @JoinColumn()
+    @OneToOne(() => ActiveServicesEntity, (svc) => svc.id,{nullable:true})
+    is_active_service!: ActiveServicesEntity;
  
     @BeforeInsert()
     createServiceId() {

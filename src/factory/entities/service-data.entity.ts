@@ -1,4 +1,4 @@
-import { AfterRemove, AfterUpdate, Column, Entity, JoinColumn, OneToOne, Relation } from "typeorm";
+import {  Column, Entity, JoinColumn, OneToOne, Relation } from "typeorm";
 import { CommonEntity } from "./common";
 
 import { ActiveServicesEntity } from "./active_services.enitity";
@@ -21,7 +21,6 @@ export class ServiceDataEntity extends CommonEntity {
     @JoinColumn()
     @OneToOne(() => ActiveServicesEntity, u => u.data, { nullable: true, eager: true, onDelete: "CASCADE" })
     active_services!: Relation<ActiveServicesEntity>;
-
      
 
 }
