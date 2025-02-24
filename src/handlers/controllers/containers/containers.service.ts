@@ -48,7 +48,7 @@ class ContainerService {
 
       logStream.on('data', (chunk) => {
         const log = chunk.toString('utf-8');
-        socket.emit(SOCKET_EVENTS.CONTAINER_LOGS, this.removeColorCharacters(log));
+        socket.emit(SOCKET_EVENTS.CONTAINER_LOGS, log);
       });
 
       logStream.on('error', (err) => {

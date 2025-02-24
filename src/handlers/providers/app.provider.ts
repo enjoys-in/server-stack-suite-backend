@@ -7,7 +7,7 @@ import { Repository } from "typeorm"
 import { exec } from 'child_process';
 import * as fs from 'fs'
 import { InitLogs } from "@/utils/helpers/file-logs"
-import { join } from "path"
+import {  extname, join } from "path"
 import { ContainerEntity } from "@/factory/entities/container.entity"
 import { SYSTEMCTL } from "@/utils/paths"
 import { readdir, stat } from "fs/promises"
@@ -198,6 +198,7 @@ class AppService {
                         name: file.name,
                         path: fullPath,
                         isDirectory: true,
+                        extenstion:null,
                         children: this.listFilesRecursively(fullPath) // Recursive call for directories
                     };
                 });
@@ -211,7 +212,8 @@ class AppService {
                         id: idCounter++, // Use and increment the counter
                         name: file.name,
                         path: fullPath,
-                        isDirectory: false
+                        isDirectory: false,
+                        extenstion:extname(file.name),
                     };
                 });
 

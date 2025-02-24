@@ -1,6 +1,8 @@
 import * as os from "os"
-import { readFileSync, existsSync, readdirSync } from "fs";
 import path from "path";
+import { readFileSync, existsSync, readdirSync } from "fs";
+import si from "systeminformation";
+import moment from "moment";
 
 const lockFiles = {
   deno: 'deno.lock',
@@ -114,6 +116,15 @@ export class CustomFunctions {
       macAddress: macA,
       performanceLoadData: await performanceLoadData(),
       timestamp: new Date(),
+    };
+  }
+  async systemInformation() {
+  
+    return {   
+      time:moment().format("MM:ss"),
+      disk_usage: await si.disksIO(),
+      stats: await si.networkStats()
+     
     };
   }
 
@@ -319,11 +330,11 @@ export class CustomFunctions {
         // Extract server_name
         const serverNameMatch = blockLines.match(/server_name\s+([^;]+);/);
         if (serverNameMatch) {
-          server.domains = serverNameMatch[1].trim().split(/\s+/).map(domain => ({ source:domain }));
+          server.domains = serverNameMatch[1].trim().split(/\s+/).map(domain => ({ source: domain }));
         }
-        if (server.domains.some((domain:any) => domain.source.includes('_')) || server.domains.length === 0) {
+        if (server.domains.some((domain: any) => domain.source.includes('_')) || server.domains.length === 0) {
           continue; // Skip this server if the condition is met
-      }
+        }
         // Check for SSL (auto_ssl and publicly_accessible)
         if (block.includes("ssl_certificate") && block.includes("ssl_certificate_key")) {
           server.auto_ssl = true;

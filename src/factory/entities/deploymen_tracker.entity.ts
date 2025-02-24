@@ -12,7 +12,7 @@ export class DeploymentTrackerEntity extends CommonEntity {
   deployment_id!: string;
 
   @ManyToOne(() => ApplicationEntity, (application) => application.deployments, {
-    onDelete: 'SET NULL',
+    onDelete: "CASCADE",
     nullable: true,
   })
   application!: Relation<ApplicationEntity>;

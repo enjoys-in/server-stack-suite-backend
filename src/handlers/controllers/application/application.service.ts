@@ -6,6 +6,7 @@ import { DeploymentTrackerEntity } from "@/factory/entities/deploymen_tracker.en
 import { FileEntity } from "@/factory/entities/file.entity";
 import { FileUploadedInfo } from "@/utils/interfaces/fileupload.interface";
 import { HealthcheckEntity } from "@/factory/entities/healthcheck.enitity";
+import containersService from "../containers/containers.service";
 
 
 const fileRepoRepository = InjectRepository(FileEntity);
@@ -65,7 +66,18 @@ class ApplicationService {
         }
         return appRepository.update({ id }, metadata)
     }
-    deleteApplication(id: number) {
+    async deleteApplication(id: number) {
+        const application = await this.getSingleApplication(id)
+        if (!application) {
+
+        }
+        if (application?.containers && application.containers.length > 0) {
+            for await (const item of application.containers) {
+                await containersService.removeContainer(item.name)
+                await containersService.removeDockerImage(item.image)
+            }
+        }
+
         return appRepository.delete({ id })
     }
     getApplicationDeploymentEvents(application_id: number) {

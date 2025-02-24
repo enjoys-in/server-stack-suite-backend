@@ -27,13 +27,13 @@ class ServiceController {
                     service_slug: true,
                     service_type: true,
                     image_name: true,
-                    service_description: true,                    
+                    service_description: true,
                     auth_required: true,
                     service_status: true,
                     is_active_service: {
                         id: true,
                         service_slug: true,
-                        container_id: true, 
+                        container_id: true,
                     }
                 }
             })
@@ -184,20 +184,24 @@ class ServiceController {
 
             const container_id = req.params.container_id
             const { status } = req.body
-            if (status === 'RUNNING') {
-                await containersService.stopContainer(container_id)
+            const input: any = {
+                status: status
             }
-            await containersService.startContainer(container_id)
+            if (status === 'STOPPED') {
+                await containersService.stopContainer(container_id)
+                input["stopped_at"] = new Date().toISOString()
+            } else {
+                await containersService.startContainer(container_id)
+            }
+
 
             await active_servicesRepository.update({
                 user: {
                     id: +uid
                 },
                 container_id
-            }, {
-                status: status
-            })
-            res.json({ message: "OK", result: null, success: true }).end();
+            }, input)
+            res.json({ message: "Operation Done", result: null, success: true }).end();
         } catch (error) {
             if (error instanceof Error) {
                 res.json({ message: error.message, result: null, success: false })

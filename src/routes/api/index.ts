@@ -100,7 +100,7 @@ router.get("/rollback-deployment/:application_id/:deployment_id", ApplicationCon
 router.get("/all-services", ServiceController.default.availableServices)
 router.get("/get-services", ServiceController.default.getServices)
 router.get("/get-service/:id", ServiceController.default.getSingleServices)
-router.get("/change-status-of-service/:container_id", ServiceController.default.changeServiceState)
+router.post("/change-status-of-service/:container_id", ServiceController.default.changeServiceState)
 router.post("/create-service", ServiceController.default.applyNewService)
 router.delete("/delete-service", ServiceController.default.deleteService)
 

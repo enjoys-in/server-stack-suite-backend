@@ -1,11 +1,11 @@
 import type { Request, Response } from "express";
-import projectService from "./project.service";
 import { resolve } from "path";
-import { IUser } from "@/utils/interfaces/user.interface";
-import { existsSync, mkdirSync } from "fs";
-import { DEPLOYMENT_DIR } from "@/utils/paths";
 import helpers from "@/utils/helpers";
-import { execSync } from "child_process";
+import projectService from "./project.service";
+import { DEPLOYMENT_DIR } from "@/utils/paths";
+import { existsSync, mkdirSync, rmSync } from "fs";
+import { IUser } from "@/utils/interfaces/user.interface";
+
 
 class ProjectController {
     async createNewProject(req: Request, res: Response) {
@@ -19,8 +19,8 @@ class ProjectController {
                     id: user.uid
                 }
             }
-           
-            
+
+
             const filteredProjectName = `project-` + helpers.purifyString(req.body.name)
             const deploymentsPath = resolve(DEPLOYMENT_DIR, user.name, filteredProjectName);
             project.project_path = deploymentsPath
@@ -77,7 +77,13 @@ class ProjectController {
             if (!id) {
                 throw new Error("Invalid project ID");
             }
+            const project = await projectService.getSingleProject(Number(id))
+            if (!project) {
+                throw new Error("Project not found");
+            }
+            rmSync(project.project_path, { recursive: true })
             await projectService.deleteProject(Number(id))
+
             res.json({ message: "OK", result: {}, success: true });
 
         } catch (error) {

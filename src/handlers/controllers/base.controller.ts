@@ -150,7 +150,7 @@ class BaseController implements OnAppStart, OnAppShutDown {
             });
             res.end();
 
-        } catch (error) {
+        } catch (error) {          
             if (error instanceof Error) {
                 res.json({ message: error.message, result: null, success: false })
                 return;
