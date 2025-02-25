@@ -57,9 +57,9 @@ export class SocketListeners {
    }
 
    sendPerformanceData(socket: socket.Socket) {
-      setInterval(async () => {
-         socket.emit(SOCKET_EVENTS.SYSTEM_INFORMATION, JSON.stringify(await func.systemInformation()))
-      }, 2500)
+      // setInterval(async () => {
+      //    socket.emit(SOCKET_EVENTS.SYSTEM_INFORMATION, JSON.stringify(await func.systemInformation()))
+      // }, 2500)
       setInterval(async () => {
          socket.emit(SOCKET_EVENTS.REALTIME_SERVER_USAGE, JSON.stringify(await func.RealTimeUsageData()))
       }, 1000)
