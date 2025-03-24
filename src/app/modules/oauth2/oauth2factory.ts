@@ -2,7 +2,7 @@
 import { AuthProvidersList, IAuthProvider } from "@/utils/interfaces/providers.interfac";
 import { GoogleAuthProvider } from "./provider/GoogleAuthProvider ";
 import { GithubAuthProvider } from "./provider/GithubAuthProvider";
-import { writeFileSync } from "fs";
+import { existsSync, writeFileSync } from "fs";
 
 export class AuthProviderFactory {
   private static _authProviders: Record<string, IAuthProvider> = {}
@@ -47,8 +47,10 @@ export class AuthProviderFactory {
     return this._authProviders;
   }
   static setSession() {
-    writeFileSync("./session.json", JSON.stringify(this._sessions));
-    
+    if(!existsSync("./session.json")) {
+      writeFileSync("./session.json", JSON.stringify(this._sessions));    
+
+    }
   }
   static authSessions() {
 

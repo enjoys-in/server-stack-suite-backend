@@ -34,7 +34,6 @@ class DefaultServiceProvider {
         let containerConfig: null | any = null;
         switch (type) {
             case "postgres:latest":
-
                 containerConfig = this.createPostgresContainerConfig(
                     credentials.username,
                     credentials.password
